@@ -32,6 +32,12 @@ Laminar.initialize(project_api_key="...")
 
 > Tracing is extremely useful for debugging and state reconstruction. When tracing is enabled, Flow will automatically capture the state at each step. During debugging, you can load the captured state and inspect the context. To learn more about tracing, see the [Laminar docs](https://docs.lmnr.ai).
 
+## Installation
+
+```bash
+pip install lmnr-flow
+```
+
 ## Getting started
 
 ### Basic Usage
