@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lmnr-flow"
+version = "0.1.0b1"
+description = "Lightweight task engine for building AI agents"
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "lmnr>=0.4.43",
+    "pytest>=8.3.3",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/lmnr-ai/flow"
+"Bug Tracker" = "https://github.com/lmnr-ai/flow/issues"
+
+[project.license]
+file = "LICENSE"
