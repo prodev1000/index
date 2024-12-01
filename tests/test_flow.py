@@ -7,7 +7,7 @@ from lmnr.openllmetry_sdk.tracing.tracing import TracerWrapper
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 
-from src.lmnr_flow.flow import Flow, TaskOutput
+from src.lmnr_flow.flow import Context, Flow, TaskOutput
 
 
 @pytest.fixture(autouse=True)
@@ -59,6 +59,14 @@ def thread_pool():
 def flow(thread_pool):
     return Flow(thread_pool)
 
+@pytest.fixture
+def flow_with_state(thread_pool):
+    context = Context()
+    context.from_dict({
+        "task1": "result1"
+    })
+
+    return Flow(thread_pool, context)
 
 def test_simple_task_execution(flow):
     # Test single task that returns no next tasks
@@ -291,3 +299,11 @@ def test_cycle(flow):
 
     result = flow.run("task1", inputs={"count": 0})
     assert result == {"task3": "final"}
+
+def test_state_loading(flow_with_state):
+    # Test that state is loaded correctly
+    flow_with_state.add_task("task2", lambda ctx: TaskOutput("result2", None))
+    flow_with_state.run("task2")
+
+    assert flow_with_state.context.get("task1") == "result1"
+    assert flow_with_state.context.get("task2") == "result2"
