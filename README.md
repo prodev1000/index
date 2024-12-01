@@ -14,12 +14,11 @@ Results of all tasks are stored in a thread-safe `Context`.
 
 This task-based architecture makes complex workflows surprisingly simple:
 
-✨ **What's Possible:**
-[x] Parallel task execution without explicit threading code
-[x] Self-modifying dynamic workflows and cycles
-[x] Conditional branching and control flow
-[x] Streaming of tasks execution
-[x] Automatic state management and persistence
+- [x] Parallel task execution without explicit threading code
+- [x] Self-modifying dynamic workflows and cycles
+- [x] Conditional branching and control flow
+- [x] Streaming of tasks execution
+- [x] Automatic state management and persistence
 
 Flow is extremely lightweight, clearly written and has not external dependencies for the engine. It is designed and maintained by [Laminar](https://github.com/lmnr-ai) team.
 
@@ -179,6 +178,6 @@ assert flow.context.get("task2") == "result2"
 - **Minimal Dependencies**: Core engine has zero external dependencies
 
 ## Roadmap
-[ ] Add async support
-[ ] Serverless deployment
+- [ ] Add async support
+- [ ] Serverless deployment
 
