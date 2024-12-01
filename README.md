@@ -28,7 +28,7 @@ Flow is extremely lightweight, clearly written and has not external dependencies
 ### Basic Usage
 ```python
 from concurrent.futures import ThreadPoolExecutor
-from flow import Flow, TaskOutput
+from lmnr_flow import Flow, TaskOutput
 
 flow = Flow(thread_pool_executor=ThreadPoolExecutor(max_workers=4))
 

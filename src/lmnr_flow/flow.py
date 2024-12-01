@@ -1,14 +1,15 @@
-from dataclasses import dataclass
-from threading import Lock
-from queue import Queue
-import traceback
-from typing import Dict, List, Optional, Any, Union, Callable
-from concurrent.futures import ThreadPoolExecutor
 import logging
+import traceback
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from queue import Queue
+from threading import Lock
+from typing import Any, Callable, Dict, List, Optional, Union
+
 from lmnr import Laminar, observe
 
-from flow.context import Context
-from flow.state import State
+from .context import Context
+from .state import State
 
 __ERROR__ = "__ERROR__"
 __OUTPUT__ = "__OUTPUT__"
@@ -52,9 +53,6 @@ class Flow:
         self, task: Task, task_queue: Queue, stream_queue: Optional[Queue] = None
     ):
         self.logger.info(f"Starting execution of task '{task.id}'")
-
-        with self.active_tasks_lock:
-            self.active_tasks.add(task.id)
 
         try:
             with Laminar.start_as_current_span(task.id, input=self.context.to_dict()):
@@ -137,7 +135,9 @@ class Flow:
                         break
                 continue
 
-            print(f"Running task: {task_id}")
+            with self.active_tasks_lock:
+                self.active_tasks.add(task_id)
+
             task = self.tasks[task_id]
             future = self._executor.submit(self.execute_task, task, task_queue)
             futures.add(future)
@@ -174,6 +174,10 @@ class Flow:
                     continue
 
                 task = self.tasks[task_id]
+
+                with self.active_tasks_lock:
+                    self.active_tasks.add(task_id)
+
                 future = self._executor.submit(
                     self.execute_task, task, task_queue, stream_queue
                 )

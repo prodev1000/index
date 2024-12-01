@@ -1,7 +1,7 @@
 from queue import Queue
 from typing import Any, Dict, Optional
 
-from flow.state import State
+from .state import State
 
 
 class Context:

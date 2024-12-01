@@ -1,7 +1,52 @@
-import pytest
-from concurrent.futures import ThreadPoolExecutor
-from flow.flow import Flow, TaskOutput
 import time
+from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import patch
+
+import pytest
+from lmnr.openllmetry_sdk.tracing.tracing import TracerWrapper
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
+
+from src.lmnr_flow.flow import Flow, TaskOutput
+
+
+@pytest.fixture(autouse=True)
+def setup_tracer():
+    # Create and set the tracer provider
+    tracer_provider = TracerProvider()
+    # Optional: Add console exporter to see the traces in the console
+    tracer_provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+    
+    # Set the tracer provider for the wrapper
+    wrapper = TracerWrapper()
+    wrapper.tracer_provider = tracer_provider
+    
+    yield
+    
+    # Cleanup after tests
+    wrapper.tracer_provider = None
+
+
+@pytest.fixture(autouse=True)
+def mock_tracer():
+    with patch('lmnr.openllmetry_sdk.tracing.tracing.TracerWrapper.get_tracer'):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def mock_start_as_current_span():
+    class MockContextManager:
+        def __init__(self, func, input=None):
+            self.func = func
+            
+        def __enter__(self):
+            return self.func
+            
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            pass
+    
+    with patch('lmnr.Laminar.start_as_current_span', side_effect=MockContextManager):
+        yield
 
 
 @pytest.fixture
