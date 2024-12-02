@@ -148,6 +148,27 @@ def test_streaming(flow):
     assert ("task2", "result2") in results
 
 
+def test_streaming_with_inputs(flow):
+    def task1(ctx, inputs):
+        assert inputs == {"input1": "value1"}
+        return TaskOutput("result1", ["task2"], next_inputs=[{"input1": "value1"}])
+
+    def task2(ctx, inputs):
+        assert inputs == {"input1": "value1"}
+        return TaskOutput("result2")
+
+    flow.add_task("task1", task1)
+    flow.add_task("task2", task2)
+
+    results = []
+    for task_id, output in flow.stream("task1", inputs={"input1": "value1"}):
+        results.append((task_id, output))
+
+    assert len(results) == 2
+    assert ("task1", "result1") in results
+    assert ("task2", "result2") in results
+
+
 def test_streaming_within_task(flow):
     def task1(ctx):
         for i in range(3):
@@ -291,7 +312,7 @@ def test_cycle(flow):
         return TaskOutput("result2", ["task1"])
 
     def task3(ctx):
-        return TaskOutput("final", None)
+        return TaskOutput("final")
 
     flow.add_task("task1", task1)
     flow.add_task("task2", task2)
@@ -307,3 +328,43 @@ def test_state_loading(flow_with_state):
 
     assert flow_with_state.context.get("task1") == "result1"
     assert flow_with_state.context.get("task2") == "result2"
+
+def test_inputs_to_next_tasks(flow):
+    # Test that inputs are passed to next tasks
+    def task1(ctx):
+        return TaskOutput("result1", ["task2"], next_inputs=[{"input1": "value1"}])
+
+    def task2(ctx, inputs):
+        assert inputs["input1"] == "value1"
+        return TaskOutput("result2")
+
+    flow.add_task("task1", task1)
+    flow.add_task("task2", task2)
+
+    result = flow.run("task1")
+    assert result == {"task2": "result2"}
+
+def test_inputs_to_next_tasks_with_no_inputs(flow):
+    # Test that inputs are passed to next tasks
+    def task1(ctx):
+        return TaskOutput("result1", ["task2"], next_inputs=None)
+
+    def task2(ctx, inputs):
+        assert inputs is None
+        return TaskOutput("result2")
+
+    flow.add_task("task1", task1)
+    flow.add_task("task2", task2)
+
+    result = flow.run("task1")
+    assert result == {"task2": "result2"}
+
+def test_inputs_to_first_task(flow):
+    # Test that inputs are passed to the first task
+    def task1(ctx, inputs):
+        assert inputs == {"input1": "value1"}
+        return TaskOutput("result1")
+
+    flow.add_task("task1", task1)
+    result = flow.run("task1", inputs={"input1": "value1"})
+    assert result == {"task1": "result1"}
