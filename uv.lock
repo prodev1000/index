@@ -421,23 +421,8 @@ wheels = [
 ]
 
 [[package]]
-name = "laminar-flow"
-version = "0.1.0b0"
-source = { virtual = "." }
-dependencies = [
-    { name = "lmnr" },
-    { name = "pytest" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "lmnr", specifier = ">=0.4.42" },
-    { name = "pytest", specifier = ">=8.3.3" },
-]
-
-[[package]]
 name = "lmnr"
-version = "0.4.42"
+version = "0.4.43"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -460,9 +445,24 @@ dependencies = [
     { name = "tenacity" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b3/0b/0a7f153fbfa923d4d57d0daf8077f91488c99a3ab83b34c443e4c10bc3cd/lmnr-0.4.42.tar.gz", hash = "sha256:e4bf11fec9e2f2330a91b102fe6ff5286c0cd78961480a7e9883d8068c6335f7", size = 35900 }
+sdist = { url = "https://files.pythonhosted.org/packages/62/f3/eb68fffa955039c3b6d3d9cb0d1e13dd66c4e55410e6a38c221d54ed79d1/lmnr-0.4.43.tar.gz", hash = "sha256:d35022aac1b5299beb62848df3ad77a8cb307fc80c8492395faef252817cbc85", size = 35909 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9b/ee/530397b4b03c5a3f0b195b75fb9ea656b0f09e4f14d61756543379a9107f/lmnr-0.4.42-py3-none-any.whl", hash = "sha256:6488225aa0d0a85b8e809382f497b21221ed3f17be5e7967cf408a38c64b7a65", size = 40581 },
+    { url = "https://files.pythonhosted.org/packages/c8/01/adff1fbace7e684312c5d346f09a7a8209bbd1f854ea4fbbf5f08ce9c649/lmnr-0.4.43-py3-none-any.whl", hash = "sha256:13db098eccf4b534018eab092b56b1be5fcdd425ed03d297b95cce343a902017", size = 40583 },
+]
+
+[[package]]
+name = "lmnr-flow"
+version = "0.1.1"
+source = { editable = "." }
+dependencies = [
+    { name = "lmnr" },
+    { name = "pytest" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "lmnr", specifier = ">=0.4.43" },
+    { name = "pytest", specifier = ">=8.3.3" },
 ]
 
 [[package]]
