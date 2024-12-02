@@ -7,7 +7,7 @@ from lmnr.openllmetry_sdk.tracing.tracing import TracerWrapper
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
 
-from src.lmnr_flow.flow import Context, Flow, TaskOutput
+from src.lmnr_flow.flow import Context, Flow, NextTask, StreamChunk, TaskOutput
 
 
 @pytest.fixture(autouse=True)
@@ -71,7 +71,7 @@ def flow_with_state(thread_pool):
 def test_simple_task_execution(flow):
     # Test single task that returns no next tasks
     def action(ctx):
-        return TaskOutput("result", None)
+        return TaskOutput("result")
 
     flow.add_task("task1", action)
     result = flow.run("task1")
@@ -83,11 +83,11 @@ def test_simple_task_execution(flow):
 def test_sequential_tasks(flow):
     # Test chain of tasks
     def task1(ctx):
-        return TaskOutput("result1", ["task2"])
+        return TaskOutput("result1", [NextTask("task2")])
 
     def task2(ctx):
         assert ctx.get("task1") == "result1"
-        return TaskOutput("result2", None)
+        return TaskOutput("result2")
 
     flow.add_task("task1", task1)
     flow.add_task("task2", task2)
@@ -99,13 +99,13 @@ def test_sequential_tasks(flow):
 def test_parallel_tasks(flow):
     # Test tasks running in parallel
     def task1(ctx):
-        return TaskOutput("result1", ["task2", "task3"])
+        return TaskOutput("result1", [NextTask("task2"), NextTask("task3")])
 
     def task2(ctx):
-        return TaskOutput("result2", None)
+        return TaskOutput("result2")
 
     def task3(ctx):
-        return TaskOutput("result3", None)
+        return TaskOutput("result3")
 
     flow.add_task("task1", task1)
     flow.add_task("task2", task2)
@@ -131,17 +131,17 @@ def test_error_handling(flow):
 def test_streaming(flow):
     # Test streaming functionality
     def task1(ctx):
-        return TaskOutput("result1", ["task2"])
+        return TaskOutput("result1", [NextTask("task2")])
 
     def task2(ctx):
-        return TaskOutput("result2", None)
+        return TaskOutput("result2")
 
     flow.add_task("task1", task1)
     flow.add_task("task2", task2)
 
     results = []
-    for task_id, output in flow.stream("task1"):
-        results.append((task_id, output))
+    for stream_chunk in flow.stream("task1"):
+        results.append((stream_chunk.task_id, stream_chunk.value))
 
     assert len(results) == 2
     assert ("task1", "result1") in results
@@ -151,7 +151,7 @@ def test_streaming(flow):
 def test_streaming_with_inputs(flow):
     def task1(ctx, inputs):
         assert inputs == {"input1": "value1"}
-        return TaskOutput("result1", ["task2"], next_inputs=[{"input1": "value1"}])
+        return TaskOutput("result1", [NextTask("task2", inputs={"input1": "value1"})])
 
     def task2(ctx, inputs):
         assert inputs == {"input1": "value1"}
@@ -161,8 +161,8 @@ def test_streaming_with_inputs(flow):
     flow.add_task("task2", task2)
 
     results = []
-    for task_id, output in flow.stream("task1", inputs={"input1": "value1"}):
-        results.append((task_id, output))
+    for stream_chunk in flow.stream("task1", inputs={"input1": "value1"}):
+        results.append((stream_chunk.task_id, stream_chunk.value))
 
     assert len(results) == 2
     assert ("task1", "result1") in results
@@ -172,15 +172,15 @@ def test_streaming_with_inputs(flow):
 def test_streaming_within_task(flow):
     def task1(ctx):
         for i in range(3):
-            ctx.get_stream().put(("task1", i))
-        return TaskOutput("result1", None)
+            ctx.get_stream().put(StreamChunk("task1", i))
+        return TaskOutput("result1")
 
     flow.add_task("task1", task1)
 
     results = []
 
-    for task_id, output in flow.stream("task1"):
-        results.append((task_id, output))
+    for stream_chunk in flow.stream("task1"):
+        results.append((stream_chunk.task_id, stream_chunk.value))
 
     assert len(results) == 4
     assert ("task1", 0) in results
@@ -193,11 +193,11 @@ def test_context_sharing(flow):
     # Test context sharing between tasks
     def task1(ctx):
         ctx.set("shared", "shared_value")
-        return TaskOutput("result1", ["task2"])
+        return TaskOutput("result1", [NextTask("task2")])
 
     def task2(ctx):
         assert ctx.get("shared") == "shared_value"
-        return TaskOutput("result2", None)
+        return TaskOutput("result2")
 
     flow.add_task("task1", task1)
     flow.add_task("task2", task2)
@@ -209,7 +209,7 @@ def test_context_sharing(flow):
 def test_invalid_task_reference(flow):
     # Test referencing non-existent task
     def task1(ctx):
-        return TaskOutput("result1", ["non_existent_task"])
+        return TaskOutput("result1", [NextTask("non_existent_task")])
 
     flow.add_task("task1", task1)
 
@@ -222,7 +222,7 @@ def test_invalid_task_reference(flow):
 def test_actual_parallel_execution(flow):
     # Test that tasks actually run in parallel by checking execution time
     def task1(ctx):
-        return TaskOutput("result1", ["slow_task1", "slow_task2"])
+        return TaskOutput("result1", [NextTask("slow_task1"), NextTask("slow_task2")])
 
     def slow_task1(ctx):
         time.sleep(0.5)  # Sleep for 500ms
@@ -251,13 +251,13 @@ def test_run_with_inputs(flow):
     def task1(ctx):
         assert ctx.get("input1") == "value1"
         assert ctx.get("input2") == "value2"
-        return TaskOutput("result1", ["task2"])
+        return TaskOutput("result1", [NextTask("task2")])
 
     def task2(ctx):
         # Verify inputs are still accessible in subsequent tasks
         assert ctx.get("input1") == "value1"
         assert ctx.get("input2") == "value2"
-        return TaskOutput("result2", None)
+        return TaskOutput("result2")
 
     flow.add_task("task1", task1)
     flow.add_task("task2", task2)
@@ -271,21 +271,21 @@ def test_run_with_inputs(flow):
 def test_correct_order_of_execution(flow):
     # Test that tasks are executed in the correct order
     def task1(ctx):
-        return TaskOutput("result1", ["task2", "task3"])
+        return TaskOutput("result1", [NextTask("task2"), NextTask("task3")])
 
     def task2(ctx):
         t1 = ctx.get("task1")
-        return TaskOutput(t1 + "result2", ["task4"])
+        return TaskOutput(t1 + "result2", [NextTask("task4")])
 
     def task3(ctx):
         t1 = ctx.get("task1")
-        return TaskOutput(t1 + "result3", ["task4"])
+        return TaskOutput(t1 + "result3", [NextTask("task4")])
 
     def task4(ctx):
         t2 = ctx.get("task2")
         t3 = ctx.get("task3")
 
-        return TaskOutput(t2 + t3, None)
+        return TaskOutput(t2 + t3)
 
     flow.add_task("task1", task1)
     flow.add_task("task2", task2)
@@ -302,14 +302,14 @@ def test_cycle(flow):
         c = ctx.get("count")
 
         if c == 3:
-            return TaskOutput("result1", ["task3"])
+            return TaskOutput("result1", [NextTask("task3")])
 
-        return TaskOutput("result1", ["task2"])
+        return TaskOutput("result1", [NextTask("task2")])
 
     def task2(ctx):
         c = ctx.get("count")
         ctx.set("count", c + 1)
-        return TaskOutput("result2", ["task1"])
+        return TaskOutput("result2", [NextTask("task1")])
 
     def task3(ctx):
         return TaskOutput("final")
@@ -323,7 +323,7 @@ def test_cycle(flow):
 
 def test_state_loading(flow_with_state):
     # Test that state is loaded correctly
-    flow_with_state.add_task("task2", lambda ctx: TaskOutput("result2", None))
+    flow_with_state.add_task("task2", lambda ctx: TaskOutput("result2"))
     flow_with_state.run("task2")
 
     assert flow_with_state.context.get("task1") == "result1"
@@ -332,7 +332,7 @@ def test_state_loading(flow_with_state):
 def test_inputs_to_next_tasks(flow):
     # Test that inputs are passed to next tasks
     def task1(ctx):
-        return TaskOutput("result1", ["task2"], next_inputs=[{"input1": "value1"}])
+        return TaskOutput("result1", [NextTask("task2", inputs={"input1": "value1"})])
 
     def task2(ctx, inputs):
         assert inputs["input1"] == "value1"
@@ -347,7 +347,7 @@ def test_inputs_to_next_tasks(flow):
 def test_inputs_to_next_tasks_with_no_inputs(flow):
     # Test that inputs are passed to next tasks
     def task1(ctx):
-        return TaskOutput("result1", ["task2"], next_inputs=None)
+        return TaskOutput("result1", [NextTask("task2")])
 
     def task2(ctx, inputs):
         assert inputs is None
@@ -368,3 +368,51 @@ def test_inputs_to_first_task(flow):
     flow.add_task("task1", task1)
     result = flow.run("task1", inputs={"input1": "value1"})
     assert result == {"task1": "result1"}
+
+def test_push_the_same_task_multiple_times(flow):
+    # Test that the same task can be pushed multiple times
+    def task1(ctx):
+        print("Executing task1")
+        c = ctx.get("count") + 1
+        ctx.set("count", c)
+
+        if c == 3:
+            return TaskOutput("result1")
+
+        return TaskOutput("result1", [NextTask("task1")])
+
+    flow.add_task("task1", task1)
+
+    result = flow.run("task1", inputs={"count": 0})
+    count = flow.get_context().get("count")
+    assert count == 3
+    assert result == {"task1": "result1"}
+
+def test_map_reduce(flow):
+    # Test map reduce functionality
+    def task1(ctx):
+        ctx.set("collector", [])
+
+        return TaskOutput("result1", [
+            NextTask("task2", spawn_another=True),
+            NextTask("task2", spawn_another=True),
+            NextTask("task2", spawn_another=True)
+        ])
+
+    def task2(ctx):
+        collector = ctx.get("collector")
+        collector.append("result2")
+        ctx.set("collector", collector)
+
+        return TaskOutput("", [NextTask("task3")])
+
+    def task3(ctx):
+        collector = ctx.get("collector")
+        return TaskOutput(collector)
+
+    flow.add_task("task1", task1)
+    flow.add_task("task2", task2)
+    flow.add_task("task3", task3)
+
+    result = flow.run("task1")
+    assert result == {"task3": ["result2", "result2", "result2"]}
