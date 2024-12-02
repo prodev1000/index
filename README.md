@@ -1,4 +1,4 @@
-# Laminar Flow
+# Flow
 
 A lightweight task engine for building AI agents that prioritizes simplicity and flexibility.
 
