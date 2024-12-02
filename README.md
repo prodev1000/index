@@ -65,7 +65,7 @@ result = flow.run("greet")  # Returns {"greet": "Hello World!"}
 ```python
 # Tasks can trigger other tasks
 def task1(context: Context) -> TaskOutput:
-    return TaskOutput(output="result1", next=[NextTask("task2")])
+    return TaskOutput(output="result1", [NextTask("task2")])
 
 def task2(context: Context) -> TaskOutput:
     # Access results from previous tasks
@@ -81,7 +81,7 @@ flow.run("task1")  # Returns {"task2": "result2"}
 ```python
 def starter(context: Context) -> TaskOutput:
     # Launch multiple tasks in parallel
-    return TaskOutput(output="started", next=[NextTask("slow_task1"), NextTask("slow_task2")])
+    return TaskOutput(output="started", [NextTask("slow_task1"), NextTask("slow_task2")])
 
 def slow_task1(context: Context) -> TaskOutput:
     time.sleep(1)
@@ -129,7 +129,7 @@ def conditional_task(context: Context) -> TaskOutput:
         return TaskOutput(output="done")
     
     context.set("count", count + 1)
-    return TaskOutput(output=f"iteration_{count}", next=[NextTask("conditional_task")])
+    return TaskOutput(output=f"iteration_{count}", [NextTask("conditional_task")])
 
 # Task will loop 3 times before finishing
 flow.add_task("conditional_task", conditional_task)
