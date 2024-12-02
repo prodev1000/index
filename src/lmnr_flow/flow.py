@@ -2,9 +2,10 @@ import logging
 import traceback
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from inspect import signature
 from queue import Queue
 from threading import Lock
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
 from lmnr import Laminar, observe
 
@@ -18,14 +19,14 @@ __OUTPUT__ = "__OUTPUT__"
 @dataclass
 class TaskOutput:
     output: Any
-    next: Union[List[str], None]
+    next: Optional[List[str]] = None
+    next_inputs: Optional[List[Dict[str, Any]]] = None
 
 
 @dataclass
 class Task:
     id: str
     action: Callable[[Context], TaskOutput]
-
 
 class Flow:
     def __init__(
@@ -50,13 +51,18 @@ class Flow:
         self.logger.info(f"Added task '{name}'")
 
     def execute_task(
-        self, task: Task, task_queue: Queue, stream_queue: Optional[Queue] = None
+        self, task: Task, inputs: Optional[Dict[str, Any]], task_queue: Queue, stream_queue: Optional[Queue] = None
     ):
         self.logger.info(f"Starting execution of task '{task.id}'")
 
         try:
-            with Laminar.start_as_current_span(task.id, input=self.context.to_dict()):
-                result: TaskOutput = task.action(self.context)
+            with Laminar.start_as_current_span(task.id, input={"context": self.context.to_dict(), "inputs": inputs}):
+                # Check if action accepts inputs parameter
+                sig = signature(task.action)
+                if "inputs" in sig.parameters:
+                    result: TaskOutput = task.action(self.context, inputs=inputs)
+                else:
+                    result: TaskOutput = task.action(self.context)
                 Laminar.set_span_output(result)
 
             # Set state to the output of the task
@@ -71,17 +77,20 @@ class Flow:
                 self.logger.info(f"Task '{task.id}' completed as output node")
                 with self.output_ids_lock:
                     self.output_task_ids.add(task.id)
-                    task_queue.put(__OUTPUT__)
+                    task_queue.put((__OUTPUT__, None))
             else:
                 self.logger.debug(
                     f"Task '{task.id}' scheduling next tasks: {result.next}"
                 )
 
                 with self.active_tasks_lock:
-                    for next_task_id in result.next:
+                    for i, next_task_id in enumerate(result.next):
                         if next_task_id in self.tasks:
                             if next_task_id not in self.active_tasks:
-                                task_queue.put(next_task_id)
+                                if result.next_inputs and i < len(result.next_inputs):
+                                    task_queue.put((next_task_id, result.next_inputs[i]))
+                                else:
+                                    task_queue.put((next_task_id, None))
                         else:
                             raise Exception(f"Task {next_task_id} not found")
 
@@ -92,7 +101,7 @@ class Flow:
             with self.active_tasks_lock:
                 self.active_tasks.clear()
 
-            task_queue.put(__ERROR__)
+            task_queue.put((__ERROR__, None))
 
             raise e
 
@@ -110,7 +119,7 @@ class Flow:
         task_queue = Queue()
         futures = set()
 
-        task_queue.put(start_task_id)
+        task_queue.put((start_task_id, inputs))
 
         if inputs:
             for key, value in inputs.items():
@@ -119,7 +128,7 @@ class Flow:
         # Main execution loop
         while True:
             # block until there is a task to spawn
-            task_id = task_queue.get()
+            task_id, inputs = task_queue.get()
 
             if task_id == __ERROR__:
                 # Cancel all pending futures on error
@@ -139,7 +148,7 @@ class Flow:
                 self.active_tasks.add(task_id)
 
             task = self.tasks[task_id]
-            future = self._executor.submit(self.execute_task, task, task_queue)
+            future = self._executor.submit(self.execute_task, task, inputs, task_queue)
             futures.add(future)
 
         # Return values of the output nodes
@@ -147,18 +156,23 @@ class Flow:
         return {task_id: self.context.get(task_id) for task_id in self.output_task_ids}
 
     @observe(name="flow.stream")
-    def stream(self, start_task_id: str):
+    def stream(self, start_task_id: str, inputs: Optional[Dict[str, Any]] = None):
         print("stream")
         task_queue = Queue()
         stream_queue = Queue()
         futures = set()
+        
+        task_queue.put((start_task_id, inputs))
+
+        if inputs:
+            for key, value in inputs.items():
+                self.context.set(key, value)
 
         self.context.set_stream(stream_queue)
 
         def run_engine():
-            task_queue.put(start_task_id)
             while True:
-                task_id = task_queue.get()
+                task_id, inputs = task_queue.get()
 
                 if task_id == __ERROR__:
                     for f in futures:
@@ -179,7 +193,7 @@ class Flow:
                     self.active_tasks.add(task_id)
 
                 future = self._executor.submit(
-                    self.execute_task, task, task_queue, stream_queue
+                    self.execute_task, task, inputs, task_queue, stream_queue
                 )
                 futures.add(future)
 

@@ -4,7 +4,7 @@ A lightweight task engine for building AI agents that prioritizes simplicity and
 
 ## Core Concept
 
-Unlike traditional node-based workflows, Laminar Flow uses a dynamic task queue system built on three simple principles:
+Unlike traditional node and edge-based workflows, Flow uses a dynamic task queue system built on three simple principles:
 
 1. **Concurrent Execution** - Tasks run in parallel automatically
 2. **Dynamic Scheduling** - Tasks can schedule new tasks at runtime
@@ -18,12 +18,16 @@ This task-based architecture makes complex workflows surprisingly simple:
 - [x] Self-modifying dynamic workflows and cycles
 - [x] Conditional branching and control flow
 - [x] Streaming of tasks execution
-- [x] Automatic state management and persistence
+- [x] State management, load previous state and save current state
+- [x] Start execution from a specific task
+- [x] Dynamically push next tasks with specific inputs
 
-Flow is extremely lightweight, clearly written and has not external dependencies for the engine. It is designed and maintained by [Laminar](https://github.com/lmnr-ai) team.
+By removing the need to predefine edges between nodes, and opting for a dynamic task scheduling architecture, Flow makes it easy to build complex, dynamic workflows as well as simple linear ones. Flow actually helps you write better and cleaner code by making it easier to reason about control flow and dependencies.
+
+Flow is lightweight, bloat-free, and has no external dependencies for the engine. It is designed to be simple, flexible and very powerful, and is maintained by the [Laminar](https://github.com/lmnr-ai/lmnr) team.
 
 ## Auto-instrumentation
-Flow comes with auto-instrumentation for tracing using [Laminar](https://github.com/lmnr-ai/lmnr). To enable tracing, initialize the Laminar SDK with tracing enabled before using Flow.
+Flow comes with auto-instrumentation for tracing using [Laminar](https://github.com/lmnr-ai/lmnr). To enable OpenTelemetry-based tracing, initialize the Laminar SDK before using Flow.
 
 ```python
 from lmnr import Laminar
@@ -43,7 +47,7 @@ pip install lmnr-flow
 ### Basic Usage
 ```python
 from concurrent.futures import ThreadPoolExecutor
-from lmnr_flow import Flow, TaskOutput
+from lmnr_flow import Flow, TaskOutput, Context
 
 # thread pool executor is optional, defaults to 4 workers
 flow = Flow(thread_pool_executor=ThreadPoolExecutor(max_workers=4))
@@ -99,6 +103,7 @@ def streaming_task(context: Context) -> TaskOutput:
     # Stream intermediate results
     stream = context.get_stream()
     for i in range(3):
+        # you push tuple of (task_id, chunk)
         stream.put(("streaming_task", f"interim_{i}"))
     return TaskOutput(output="final", next=None)
 
@@ -142,6 +147,22 @@ result = flow.run("greet", inputs={"user_name": "Alice"})
 # Returns {"greet": "Hello Alice!"}
 ```
 
+### Push next task with inputs
+```python
+def task1(ctx):
+    return TaskOutput("result1", ["task2"], next_inputs=[{"input1": "value1"}])
+
+# task2 will be called with inputs={"input1": "value1"}
+def task2(ctx, inputs):
+    assert inputs == {"input1": "value1"}
+    return TaskOutput("result2")
+
+flow.add_task("task1", task1)
+flow.add_task("task2", task2)
+result = flow.run("task1")
+# Returns {"task2": "result2"}
+```
+
 ### Dynamic Routing
 ```python
 def router(context: Context) -> TaskOutput:
@@ -174,6 +195,11 @@ flow.run("task2")
 
 assert flow.context.get("task1") == "result1" # True, because it was set in the context
 assert flow.context.get("task2") == "result2"
+
+
+# Serialize the context to a dictionary
+flow.get_context().to_dict()
+# Returns {"task1": "result1", "task2": "result2"}
 ```
 
 ## Advanced Features
