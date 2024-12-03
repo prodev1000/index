@@ -77,10 +77,18 @@ flow.add_task("task2", task2)
 flow.run("task1")  # Returns {"task2": "result2"}
 ```
 
+### Simple AI Agent tool usage
+```python
+def my_tool(context: Context) -> TaskOutput:
+    return TaskOutput(output="result")
+
+flow.add_tool("my_tool", my_tool)
+```
+
 ### Parallel Execution
 ```python
 def starter(context: Context) -> TaskOutput:
-    # Launch multiple tasks in parallel
+    # Launch multiple tasks in parallel by simply adding them to the next_tasks list
     return TaskOutput(output="started", [NextTask("slow_task1"), NextTask("slow_task2")])
 
 def slow_task1(context: Context) -> TaskOutput:
@@ -231,6 +239,49 @@ flow.add_task("task3", task3)
 
 result = flow.run("task1")
 assert result == {"task3": ["result2", "result2", "result2"]}
+```
+
+### LLM Agent with Dynamic Tool Selection
+
+```python
+from typing import List
+import json
+
+def llm_agent(context: Context) -> TaskOutput:
+    # Simulated LLM response that determines which tools to use
+    prompt = context.get("user_input")
+    llm_response = {
+        "reasoning": "Need to search database and format results",
+        "tools": ["search_db", "format_results"]
+    }
+    
+    # Schedule the selected tools in sequence
+    next_tasks: List[NextTask] = []
+    for tool in llm_response["tools"]:
+        next_tasks.append(NextTask(tool))
+    
+    return TaskOutput(output=llm_response["reasoning"], next_tasks)
+
+def search_db(context: Context) -> TaskOutput:
+    # Simulate database search
+    results = ["result1", "result2"]
+    return TaskOutput(output=results)
+
+def format_results(context: Context) -> TaskOutput:
+    # Format results from previous task
+    search_results = context.get("search_db")
+    formatted = json.dumps(search_results, indent=2)
+    return TaskOutput(output=formatted)
+
+# Set up the agent
+flow = Flow()
+flow.add_task("llm_agent", llm_agent)
+flow.add_tool("search_db", search_db)
+flow.add_tool("format_results", format_results)
+
+# Run the agent
+result = flow.run("llm_agent", inputs={"user_input": "Find and format data"})
+# Returns the final formatted results
 ```
 
 ## Advanced Features

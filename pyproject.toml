@@ -4,14 +4,18 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lmnr-flow"
-version = "0.1.3"
+version = "0.1.4"
 description = "Lightweight task engine for building AI agents"
 readme = "README.md"
 requires-python = ">=3.10"
 
 dependencies = [
-    "lmnr>=0.4.43",
-    "pytest>=8.3.3",
+    "lmnr>=0.4.43"
+]
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=8.3.3"
 ]
 
 [project.urls]
