@@ -77,14 +77,6 @@ flow.add_task("task2", task2)
 flow.run("task1")  # Returns {"task2": "result2"}
 ```
 
-### Simple AI Agent tool usage
-```python
-def my_tool(context: Context) -> TaskOutput:
-    return TaskOutput(output="result")
-
-flow.add_tool("my_tool", my_tool)
-```
-
 ### Parallel Execution
 ```python
 def starter(context: Context) -> TaskOutput:
