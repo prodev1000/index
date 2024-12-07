@@ -10,8 +10,10 @@ class Context:
     def __init__(self):
         self.states = {}  # str -> State
 
-    def get(self, key: str) -> Any:
+    def get(self, key: str, default: Any = None) -> Any:
         if key not in self.states:
+            if default is not None:
+                return default
             raise Exception(f"Key {key} not found in context")
 
         state = self.states[key]
