@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 
 dependencies = [
-    "lmnr>=0.4.43"
+    "lmnr>=0.4.49"
 ]
 
 [tool.uv]
