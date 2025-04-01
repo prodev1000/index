@@ -91,9 +91,6 @@ class Browser:
 		self._state: Optional[BrowserState] = None
 		self._cdp_session = None
 		
-		# Default wait times
-		self.wait_between_actions = 1.0
-		
 		# CV detection-related attributes
 		self.detector: Optional[Detector] = None
 		
@@ -476,7 +473,6 @@ class Browser:
 
 	async def get_cdp_session(self):
 		"""Get or create a CDP session for the current page"""
-		page = await self.get_current_page()
 		
 		# Create a new session if we don't have one or the page has changed
 		if (self._cdp_session is None or 

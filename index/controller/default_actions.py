@@ -184,8 +184,6 @@ def register_default_actions(controller, output_model=None):
                     await page.keyboard.press("Enter")
                     await asyncio.sleep(2)
 
-                await page.wait_for_load_state()
-
                 msg = f'Input "{text}" into element with index {index}'
                 logger.info(msg)
                 return ActionResult(content=msg)

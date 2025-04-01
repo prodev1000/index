@@ -5,12 +5,12 @@ import logging
 import re
 import time
 import uuid
-from typing import AsyncGenerator, Literal, Optional, TypeVar
+from typing import AsyncGenerator, Optional
 
 import backoff
 from dotenv import load_dotenv
 from lmnr import Laminar, LaminarSpanContext, observe, use_span
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 from index.agent.message_manager import MessageManager
 from index.agent.models import (
@@ -18,6 +18,13 @@ from index.agent.models import (
 	AgentLLMOutput,
 	AgentOutput,
 	AgentState,
+	AgentStreamChunk,
+	FinalOutputChunk,
+	StepChunk,
+	StepChunkContent,
+	StepChunkError,
+	TimeoutChunk,
+	TimeoutChunkContent,
 )
 from index.browser.browser import Browser
 from index.controller.controller import Controller
@@ -26,51 +33,15 @@ from index.llm.llm import BaseLLMProvider, Message
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T', bound=BaseModel)
-
-class AgentStreamChunk(BaseModel):
-	"""Base class for chunks in the agent stream"""
-	type: str
-	trace_id: str | None = None
-
-class StepChunkContent(BaseModel):
-	action_result: ActionResult
-	summary: str
-
-class StepChunk(AgentStreamChunk):
-	"""Chunk containing a step result"""
-	type: Literal["step"] = "step"
-	content: StepChunkContent
-	
-class TimeoutChunk(AgentStreamChunk):
-	"""Chunk containing a timeout"""
-	type: Literal["step_timeout"] = "step_timeout"
-	content: StepChunkContent
-	step: int
-	agent_state: AgentState
-	step_parent_span_context: Optional[str]
-
-class StepChunkError(AgentStreamChunk):
-	"""Chunk containing an error"""
-	type: Literal["step_error"] = "step_error"
-	content: str
-
-class FinalOutputChunk(AgentStreamChunk):
-	"""Chunk containing the final output"""
-	type: Literal["final_output"] = "final_output"
-	content: AgentOutput
-
 class Agent:
 	def __init__(
 		self,
 		llm: BaseLLMProvider,
 		browser: Browser | None = None
 	):
-
 		self.llm = llm
 		self.controller = Controller()
 
-		self.injected_browser = browser is not None
 		# Initialize browser or use the provided one
 		self.browser = browser if browser is not None else Browser()
 		
@@ -84,7 +55,6 @@ class Agent:
 			messages=[],
 		)
 		
-
 	@backoff.on_exception(
 		backoff.constant,
 		Exception,
@@ -229,7 +199,43 @@ class Agent:
 				span.set_attribute("lmnr.internal.agent_session_id", session_id)
 			
 			await self._setup_messages(prompt, agent_state)
-			return await self._run_normal(max_steps, close_context, prev_action_result)
+
+			step = 0
+			result = prev_action_result
+			is_done = False
+
+			trace_id = str(uuid.UUID(int=span.get_span_context().trace_id))
+
+			try:
+				while not is_done and step < max_steps:
+					logger.info(f'📍 Step {step}')
+					result, _ = await self.step(step, result)
+					step += 1
+					is_done = result.is_done
+					
+					if is_done:
+						logger.info(f'✅ Task completed successfully in {step} steps')
+						break
+						
+				if not is_done:
+					logger.info('❌ Maximum number of steps reached')
+
+			except Exception as e:
+				logger.info(f'❌ Error in run: {e}')
+			finally:
+				cookies = await self.browser.get_cookies()
+
+				if close_context:
+					# Update to close the browser directly
+					await self.browser.close()
+
+				return AgentOutput(
+					agent_state=self.get_state(),
+					result=result,
+					cookies=cookies,
+					step_count=step,
+					trace_id=trace_id,
+				)
 
 	async def run_stream(self, 
 						prompt: str | None = None,
@@ -304,20 +310,22 @@ class Agent:
 						ctx = step_span_context.model_dump_json()
 
 					yield TimeoutChunk(
-							content=StepChunkContent(
+							content=TimeoutChunkContent(
 										action_result=result, 
 										summary=summary, 
-										state=self.get_state()), 
-							step=step, agent_state=self.get_state(), 
-							step_parent_span_context=ctx, 
-							trace_id=trace_id)
+										step=step, 
+										agent_state=self.get_state(), 
+										step_parent_span_context=ctx, 
+										trace_id=trace_id)
+					)
 					return
 
 				yield StepChunk(
 						content=StepChunkContent(
 									action_result=result, 
-									summary=summary), 
-						trace_id=trace_id)
+									summary=summary, 
+									trace_id=trace_id)
+				)
 
 				if is_done:
 					logger.info(f'✅ Task completed successfully in {step} steps')
@@ -325,7 +333,7 @@ class Agent:
 
 			if not is_done:
 				logger.info('❌ Maximum number of steps reached')
-				yield StepChunkError(content=f'Maximum number of steps reached: {max_steps}', trace_id=trace_id)
+				yield StepChunkError(content=f'Maximum number of steps reached: {max_steps}')
 
 
 		except Exception as e:
@@ -346,48 +354,16 @@ class Agent:
 					agent_state=self.get_state(),
 					result=result,
 					cookies=cookies,
+					step_count=step,
+					trace_id=trace_id,
 				)
-				yield FinalOutputChunk(content=final_output, trace_id=trace_id)
+
+				yield FinalOutputChunk(content=final_output)
 			finally:
 				if span is not None:
 					span.end()
 				
 				logger.info('Stream complete, span closed')
-
-	async def _run_normal(self, max_steps: int = 100, close_context: bool = True, prev_action_result: ActionResult | None = None) -> AgentOutput:
-		"""Execute the task with maximum number of steps (non-streaming)"""
-		step = 0
-		result = prev_action_result
-		is_done = False
-
-		try:
-			while not is_done and step < max_steps:
-				logger.info(f'📍 Step {step}')
-				result, _ = await self.step(step, result)
-				step += 1
-				is_done = result.is_done
-				
-				if is_done:
-					logger.info(f'✅ Task completed successfully in {step} steps')
-					break
-					
-			if not is_done:
-				logger.info('❌ Maximum number of steps reached')
-
-		except Exception as e:
-			logger.info(f'❌ Error in run: {e}')
-		finally:
-			cookies = await self.browser.get_cookies()
-
-			if close_context:
-				# Update to close the browser directly
-				await self.browser.close()
-
-			return AgentOutput(
-				agent_state=self.get_state(),
-				result=result,
-				cookies=cookies,
-			)
 
 	def get_state(self) -> AgentState:
 
