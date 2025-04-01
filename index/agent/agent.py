@@ -270,11 +270,13 @@ class Agent:
 				},
 			)
 
-		if session_id is not None:
-			span.set_attribute("lmnr.internal.agent_session_id", session_id)
 
 		if span is not None:
 			trace_id = str(uuid.UUID(int=span.get_span_context().trace_id))
+			
+			if session_id is not None:
+				span.set_attribute("lmnr.internal.agent_session_id", session_id)
+
 		elif step_span_context is not None:
 			trace_id = str(step_span_context.trace_id)
 		else:
