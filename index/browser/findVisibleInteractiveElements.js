@@ -498,11 +498,11 @@
             viewport: {
                 width: window.innerWidth,
                 height: window.innerHeight,
-                scrollX: window.scrollX,
-                scrollY: window.scrollY,
+                scrollX: Math.round(window.scrollX),
+                scrollY: Math.round(window.scrollY),
                 devicePixelRatio: window.devicePixelRatio || 1,
-                scrollDistanceAboveViewport: window.scrollY,
-                scrollDistanceBelowViewport: document.documentElement.scrollHeight - window.scrollY - window.innerHeight
+                scrollDistanceAboveViewport: Math.round(window.scrollY),
+                scrollDistanceBelowViewport: Math.round(document.documentElement.scrollHeight - window.scrollY - window.innerHeight)
             },
             elements: []
         };

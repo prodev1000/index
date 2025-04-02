@@ -197,8 +197,6 @@ def register_default_actions(controller, output_model=None):
     @controller.action('Switch tab')
     async def switch_tab(page_id: int, browser: Browser):
         await browser.switch_to_tab(page_id)
-        # Wait for tab to be ready
-        page = await browser.get_current_page()
         await asyncio.sleep(0.5)
         msg = f'Switched to tab {page_id}'
         logger.info(msg)
