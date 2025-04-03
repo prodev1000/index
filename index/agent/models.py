@@ -52,7 +52,7 @@ class StepChunkContent(BaseModel):
 	action_result: ActionResult
 	summary: str
 	trace_id: str | None = None
-
+	screenshot: Optional[str] = None
 class StepChunk(AgentStreamChunk):
 	"""Chunk containing a step result"""
 	type: Literal["step"] = "step"
@@ -65,6 +65,7 @@ class TimeoutChunkContent(BaseModel):
 	agent_state: AgentState
 	step_parent_span_context: Optional[str]
 	trace_id: str | None = None
+	screenshot: Optional[str] = None
 
 class TimeoutChunk(AgentStreamChunk):
 	"""Chunk containing a timeout"""

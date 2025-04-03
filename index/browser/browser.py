@@ -168,14 +168,25 @@ class Browser:
 			if self.config.cookies:
 				await self.context.add_cookies(self.config.cookies)
 		
+		self.context.on('page', self._on_page_change)	
+		
 		# Create page if needed
 		if self.current_page is None:
 			if len(self.context.pages) > 0:
-				self.current_page = self.context.pages[0]
+				self.current_page = self.context.pages[-1]
 			else:
 				self.current_page = await self.context.new_page()
+		
+
 		return self
 	
+	async def _on_page_change(self, page: Page):
+		"""Handle page change events"""
+		logger.info(f'Current page changed to {page.url}')
+
+		self._cdp_session = await self.context.new_cdp_session(page)
+		self.current_page = page
+
 	def setup_cv_detector(self, endpoint_name: Optional[str] = None) -> None:
 		"""
 		Set up the CV detector with the browser
@@ -478,7 +489,7 @@ class Browser:
 		if (self._cdp_session is None or 
 			not hasattr(self._cdp_session, '_page') or 
 			self._cdp_session._page != self.current_page):
-			self._cdp_session = await self.current_page.context.new_cdp_session(self.current_page)
+			self._cdp_session = await self.context.new_cdp_session(self.current_page)
 			# Store reference to the page this session belongs to
 			self._cdp_session._page = self.current_page
 			

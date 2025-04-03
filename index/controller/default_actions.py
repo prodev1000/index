@@ -76,14 +76,14 @@ def register_default_actions(controller, output_model=None):
             return ActionResult(error=str(e))
 
     @controller.action()
-    async def click_element(index: int, should_wait_after_click: bool, browser: Browser):
+    async def click_element(index: int, wait_after_click: bool, browser: Browser):
         """
         Click on the element with index. Use it primarily to perform actions. 
         If you need to input text into an element, prefer `click_element_and_enter_text` instead.
 
         Args:
             index: Index of the element to click on.
-            should_wait_after_click: If True, wait for 1 second after clicking the element. Use this when you think that clicking will trigger some loading state, for instance navigation to new page, search, loading of a content, etc.
+            wait_after_click: If True, wait for 1 second after clicking the element. Use this when you think that clicking will trigger loading state, for instance navigation to new page, search, loading of a content, etc.
         """
         # clean index if it contains any non-numeric characters
         cleaned_index_str = re.sub(r'\D', '', str(index))
@@ -117,7 +117,7 @@ def register_default_actions(controller, output_model=None):
                 logger.info(new_tab_msg)
                 await browser.switch_to_tab(-1)
             
-            if should_wait_after_click:
+            if wait_after_click:
                 await asyncio.sleep(1)
 
             return ActionResult(content=msg)

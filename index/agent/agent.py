@@ -248,6 +248,7 @@ class Agent:
 						step_span_context: Optional[LaminarSpanContext] = None,
 						timeout: Optional[int] = None,
 						session_id: str | None = None,
+						return_screenshots: bool = False,
 						) -> AsyncGenerator[AgentStreamChunk, None]:
 		"""Execute the task with maximum number of steps and stream results as they happen"""
 		
@@ -304,6 +305,11 @@ class Agent:
 				step += 1
 				is_done = result.is_done
 
+				screenshot = None
+				if return_screenshots:
+					state = self.browser.get_state()
+					screenshot = state.screenshot
+
 				if timeout is not None and time.time() - start_time > timeout:
 					if span is not None:
 						ctx = Laminar.serialize_span_context(span)
@@ -318,7 +324,9 @@ class Agent:
 										step=step, 
 										agent_state=self.get_state(), 
 										step_parent_span_context=ctx, 
-										trace_id=trace_id)
+										trace_id=trace_id,
+										screenshot=screenshot
+										)
 					)
 					return
 
@@ -326,7 +334,9 @@ class Agent:
 						content=StepChunkContent(
 									action_result=result, 
 									summary=summary, 
-									trace_id=trace_id)
+									trace_id=trace_id,
+									screenshot=screenshot
+									)
 				)
 
 				if is_done:
