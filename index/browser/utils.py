@@ -267,11 +267,11 @@ def filter_overlapping_elements(elements: List[InteractiveElement], iou_threshol
             
             # Check if current element is fully contained within an existing element with higher weight
             if is_fully_contained(current.rect, existing.rect):
-                if existing.weight >= current.weight:
+                if existing.weight >= current.weight and existing.z_index == current.z_index:
                     should_add = False
                     break
                 else:
-                    # If current element has higher weight and is more than 50% of the size of the existing element, replace the existing element
+                    # If current element has higher weight and is more than 50% of the size of the existing element, remove the existing element
                     if current.rect["width"] * current.rect["height"] >= existing.rect["width"] * existing.rect["height"] * 0.5:
                         filtered_elements.remove(existing)
                         break

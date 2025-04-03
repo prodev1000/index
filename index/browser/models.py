@@ -38,6 +38,7 @@ class InteractiveElement(BaseModel):
 	browser_agent_id: str
 	input_type: Optional[str] = field(default=None)
 	rect: dict[str, int]
+	z_index: int
 
 class BrowserError(Exception):
 	"""Base class for all browser errors"""

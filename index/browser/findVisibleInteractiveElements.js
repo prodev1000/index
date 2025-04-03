@@ -24,6 +24,11 @@
         'path': 3
     };
 
+    function generateUniqueId() {
+        const rand = Math.random().toString(36);
+        return `ba-${rand}`;
+    } 
+
     // Add this helper function to check element coverage
     function isElementTooBig(rect) {
         const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
@@ -162,6 +167,23 @@
         }
     }
 
+    // Add helper function to get effective z-index
+    function getEffectiveZIndex(element) {
+        let current = element;
+        let zIndex = 'auto';
+        
+        while (current && current !== document) {
+            const style = window.getComputedStyle(current);
+            if (style.position !== 'static' && style.zIndex !== 'auto') {
+                zIndex = parseInt(style.zIndex, 10);
+                break;
+            }
+            current = current.parentElement;
+        }
+        
+        return zIndex === 'auto' ? 0 : zIndex;
+    }
+
     // Function to find all interactive elements
     function findInteractiveElements() {
         console.time('findInteractiveElements');
@@ -283,7 +305,8 @@
                         viewportElements.push({
                             element: element,
                             rect: rect,
-                            weight: 1
+                            weight: 1,
+                            zIndex: getEffectiveZIndex(element)
                         });
                     }
                     
@@ -361,7 +384,8 @@
             viewportElements.push({
                 element: element,
                 rect: rect,
-                weight: weight
+                weight: weight,
+                zIndex: getEffectiveZIndex(element)
             });
 
             // Add this to the code that processes each element
@@ -466,7 +490,9 @@
                 }
                 
                 // Check if current element is fully contained within an existing element with higher weight
-                if (existing.weight >= current.weight && isFullyContained(currentRect, existingRect)) {
+                if (existing.weight > current.weight && 
+                    isFullyContained(currentRect, existingRect) && 
+                    existing.zIndex === current.zIndex) {
                     shouldAdd = false;
                     break;
                 }
@@ -580,7 +606,8 @@
                     bottom: Math.round(rect.bottom),
                     width: Math.round(rect.width),
                     height: Math.round(rect.height)
-                }
+                },
+                zIndex: item.zIndex
             };
             
             // Add context information for iframe or shadow DOM if applicable
@@ -679,10 +706,6 @@
     const result = getInteractiveElementsData();
     console.timeEnd('getInteractiveElements');
     console.timeEnd('totalExecutionTime');
-    return result;
-};
 
-function generateUniqueId() {
-    const rand = Math.random().toString(36);
-    return `ba-${rand}`;
-} 
+    return result;
+};   

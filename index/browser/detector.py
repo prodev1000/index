@@ -134,7 +134,8 @@ class Detector:
                         "bottom": round(y2),
                         "width": round(width),
                         "height": round(height)
-                    }
+                    },
+                    z_index=0
                 )
                 
                 elements.append(element)
