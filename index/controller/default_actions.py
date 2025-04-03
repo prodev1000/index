@@ -130,68 +130,38 @@ def register_default_actions(controller, output_model=None):
     async def wait_for_page_to_load() -> ActionResult:
         return ActionResult(content='Waited for page to load')
 
-    @controller.action(
-        'Enter text into an input element. Works with <input>, <textarea> or contenteditable elements. This action will override the current text in the element. If you want to also submit the form, set `press_enter` to true.'
-    )
-    async def enter_text_into_element(index: int, text: str, press_enter: bool, browser: Browser):
-        state = browser.get_state()
-
+    @controller.action()
+    async def enter_text(text: str, press_enter: bool, browser: Browser):
+        """Enter text with a keyboard. Use it AFTER you have clicked on an input element. This action will override the current text in the element.
+        
+        Args:
+            text: Text to enter with a keyboard.
+            press_enter: If True, `Enter` button will be pressed after entering the text. Use this when you think it would make sense to press `Enter` after entering the text, such as when you're submitting a form, performing a search, etc.
+        """
+                    
         try:
-            if index not in state.interactive_elements:
-                return ActionResult(error=f'Element index {index} does not exist - retry or use alternative actions')
+            page = await browser.get_current_page()
+            # clear the element
+            if platform.system() == "Darwin":  # macOS
+                await page.keyboard.press("Meta+a")
+            else:  # Windows or Linux
+                await page.keyboard.press("Control+a")
+            await asyncio.sleep(0.1)
+            await page.keyboard.press("Backspace")
+            await asyncio.sleep(0.1)
 
-            element = state.interactive_elements[index]
-            
-            # Check if element is a valid input type
-            valid_tag_names = ['input', 'textarea']
-            valid_input_types = ['text', 'password', 'email', 'search', 'tel', 'url', None]  # None for inputs without type
-            is_contenteditable = element.attributes.get('contenteditable') in ['true', '']
-            
-            if element.tag_name not in valid_tag_names and not is_contenteditable:
-                return ActionResult(
-                    error=f"Element {index} is not a text input element. It's a {element.tag_name} element."
-                )
-                
-            # For input elements, check input type
-            if element.tag_name == 'input' and element.input_type not in valid_input_types:
-                return ActionResult(
-                    error=f"Element {index} is an input with type='{element.input_type}', which doesn't accept text input."
-                )
-            
-            try:
-                page = await browser.get_current_page()
+            # input text into the element
+            await page.keyboard.type(text)
 
-                # move mouse to the center of the element
-                await page.mouse.move(element.center.x, element.center.y)
-                await asyncio.sleep(0.1)
+            if press_enter:
+                await page.keyboard.press("Enter")
+                await asyncio.sleep(2)
 
-                # click the element
-                await page.mouse.click(element.center.x, element.center.y)
-                await asyncio.sleep(0.1)
-                # clear the element
-                if platform.system() == "Darwin":  # macOS
-                    await page.keyboard.press("Meta+a")
-                else:  # Windows or Linux
-                    await page.keyboard.press("Control+a")
-                await asyncio.sleep(0.1)
-                await page.keyboard.press("Backspace")
-                await asyncio.sleep(0.1)
-
-                # input text into the element
-                await page.keyboard.type(text)
-
-                if press_enter:
-                    await page.keyboard.press("Enter")
-                    await asyncio.sleep(2)
-
-                msg = f'Input "{text}" into element with index {index}'
-                logger.info(msg)
-                return ActionResult(content=msg)
-            except Exception as e:
-                return ActionResult(error=f'Failed to input text into element with index {element.index}. Error: {str(e)}')
+            msg = f'Entered "{text}" on the keyboard. Make sure to double check that the text was entered to where you intended.'
+            logger.info(msg)
+            return ActionResult(content=msg)
         except Exception as e:
-            logger.error(f'Error inputting text into element {index}: {str(e)}')
-            return ActionResult(error=str(e))
+            return ActionResult(error=f'Failed to enter text. Error: {str(e)}')
 
     # Tab Management Actions
     @controller.action('Switch tab')

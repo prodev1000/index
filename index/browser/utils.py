@@ -251,7 +251,7 @@ def filter_overlapping_elements(elements: List[InteractiveElement], iou_threshol
         -e.weight  # Negative weight for descending sort
     ))
     
-    filtered_elements = []
+    filtered_elements: List[InteractiveElement] = []
     
     # Add elements one by one, checking against already added elements
     for current in elements:
@@ -266,10 +266,15 @@ def filter_overlapping_elements(elements: List[InteractiveElement], iou_threshol
                 break
             
             # Check if current element is fully contained within an existing element with higher weight
-            if (existing.weight >= current.weight and 
-                is_fully_contained(current.rect, existing.rect)):
-                should_add = False
-                break
+            if is_fully_contained(current.rect, existing.rect):
+                if existing.weight >= current.weight:
+                    should_add = False
+                    break
+                else:
+                    # If current element has higher weight and is more than 50% of the size of the existing element, replace the existing element
+                    if current.rect["width"] * current.rect["height"] >= existing.rect["width"] * existing.rect["height"] * 0.5:
+                        filtered_elements.remove(existing)
+                        break
         
         if should_add:
             filtered_elements.append(current)

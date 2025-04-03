@@ -77,7 +77,8 @@ class Detector:
                     EndpointName=self.endpoint_name,
                     ContentType="application/json",
                     Body=json.dumps({
-                        "image": image_b64
+                        "image": image_b64,
+                        "conf": 0.1
                     })
                 )
             
@@ -108,7 +109,7 @@ class Detector:
                     tag_name="element",
                     text="",
                     attributes={},
-                    weight=2,
+                    weight=1,
                     viewport={
                         "x": round(x1),
                         "y": round(y1),
