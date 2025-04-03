@@ -53,6 +53,7 @@ class StepChunkContent(BaseModel):
 	summary: str
 	trace_id: str | None = None
 	screenshot: Optional[str] = None
+
 class StepChunk(AgentStreamChunk):
 	"""Chunk containing a step result"""
 	type: Literal["step"] = "step"

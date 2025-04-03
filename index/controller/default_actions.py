@@ -342,7 +342,7 @@ def register_default_actions(controller, output_model=None):
                     name: select.name
                 };
             }
-            """, {"browserAgentId": element.index_id})
+            """, {"browserAgentId": element.browser_agent_id})
 
             # Process options from direct approach
             formatted_options = []
@@ -384,7 +384,7 @@ def register_default_actions(controller, output_model=None):
             if element.tag_name.lower() != 'select':
                 return ActionResult(error=f"Element {index} is not a select element, it's a {element.tag_name}")
             
-            logger.debug(f"Attempting to select '{option}' using index_id: {element.index_id}")
+            logger.debug(f"Attempting to select '{option}' using browser_agent_id: {element.browser_agent_id}")
             
             # Use JavaScript to select the option using the unique ID
             result = await page.evaluate("""
@@ -449,7 +449,7 @@ def register_default_actions(controller, output_model=None):
                     };
                 }
             }
-            """, {"uniqueId": element.index_id, "optionText": option})
+            """, {"uniqueId": element.browser_agent_id, "optionText": option})
             
             if result.get('success'):
                 msg = f"Selected option '{option}' with value '{result.get('value')}' at index {result.get('index')}"
