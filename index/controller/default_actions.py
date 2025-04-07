@@ -76,6 +76,36 @@ def register_default_actions(controller, output_model=None):
             return ActionResult(error=str(e))
 
     @controller.action()
+    async def click_on_spreadsheet_cell(row: str, column: str, browser: Browser) -> ActionResult:
+        """Click on a spreadsheet cell at a specific row and column. You HAVE to use this action when you need to click on a cell in a spreadsheet. DON'T try to use click_element action, it will not work.
+        
+        Args:
+            row: Row of the cell to click on, it should be a number formatted as a string. e.g. "1"
+            column: Column of the cell to click on, it should be a letter formatted as a string. e.g. "A"
+        """
+        page = await browser.get_current_page()
+        state = browser.get_state()
+        
+        elements = state.interactive_elements.values()
+
+        row_element = next((e for e in elements if e.browser_agent_id == f"row_{row}"), None)
+        column_element = next((e for e in elements if e.browser_agent_id == f"column_{column}"), None)
+
+        if not row_element or not column_element:
+            return ActionResult(error='Row or column element not found - pay close attention to the row and column numbers.')
+
+        await page.keyboard.press('Escape')
+        await asyncio.sleep(0.05)
+
+        await page.mouse.move(column_element.center.x, row_element.center.y)
+        await asyncio.sleep(0.05)
+        await page.mouse.click(column_element.center.x, row_element.center.y)
+        await asyncio.sleep(0.05)
+
+        return ActionResult(content=f'Clicked on spreadsheet cell with row {row} and column {column}')
+
+
+    @controller.action()
     async def click_element(index: int, wait_after_click: bool, browser: Browser):
         """
         Click on the element with index. Use it primarily to perform actions. 
@@ -142,10 +172,7 @@ def register_default_actions(controller, output_model=None):
         try:
             page = await browser.get_current_page()
             # clear the element
-            if platform.system() == "Darwin":  # macOS
-                await page.keyboard.press("Meta+a")
-            else:  # Windows or Linux
-                await page.keyboard.press("Control+a")
+            await page.keyboard.press("ControlOrMeta+a")
             await asyncio.sleep(0.1)
             await page.keyboard.press("Backspace")
             await asyncio.sleep(0.1)

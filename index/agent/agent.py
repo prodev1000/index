@@ -7,7 +7,6 @@ import time
 import uuid
 from typing import AsyncGenerator, Optional
 
-import backoff
 from dotenv import load_dotenv
 from lmnr import Laminar, LaminarSpanContext, observe, use_span
 from pydantic import ValidationError
@@ -26,7 +25,7 @@ from index.agent.models import (
 	TimeoutChunk,
 	TimeoutChunkContent,
 )
-from index.browser.browser import Browser
+from index.browser.browser import Browser, BrowserConfig
 from index.controller.controller import Controller
 from index.llm.llm import BaseLLMProvider, Message
 
@@ -37,13 +36,13 @@ class Agent:
 	def __init__(
 		self,
 		llm: BaseLLMProvider,
-		browser: Browser | None = None
+		browser_config: BrowserConfig | None = None
 	):
 		self.llm = llm
 		self.controller = Controller()
 
 		# Initialize browser or use the provided one
-		self.browser = browser if browser is not None else Browser()
+		self.browser = Browser(config=browser_config if browser_config is not None else BrowserConfig())
 		
 		action_descriptions = self.controller.get_action_descriptions()
 
@@ -54,13 +53,7 @@ class Agent:
 		self.state = AgentState(
 			messages=[],
 		)
-		
-	@backoff.on_exception(
-		backoff.constant,
-		Exception,
-		max_tries=3,
-		interval=10,
-	)
+
 	async def step(self, step: int, previous_result: ActionResult | None = None, step_span_context: Optional[LaminarSpanContext] = None) -> tuple[ActionResult, str]:
 		"""Execute one step of the task"""
 

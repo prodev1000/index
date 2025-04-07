@@ -45,6 +45,11 @@ def put_highlight_elements_on_screenshot(elements: dict[int, InteractiveElement]
             font = ImageFont.load_default()
             
         for idx, element in elements.items():
+
+            # don't draw sheets elements
+            if element.browser_agent_id.startswith("row_") or element.browser_agent_id.startswith("column_"):
+                continue
+
             color = colors[idx % len(colors)]
             rect = element.viewport
             

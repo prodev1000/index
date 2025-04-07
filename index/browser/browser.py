@@ -65,22 +65,25 @@ class BrowserConfig:
 			
 		cv_model_endpoint: Optional[str] = None
 			SageMaker endpoint for CV model, set to None to disable CV detection
+
+		sheets_model_endpoint: Optional[str] = None
+			SageMaker endpoint for sheets model, set to None to disable sheets detection
 	"""
 	cdp_url: Optional[str] = None
-	viewport_size: ViewportSize = field(default_factory=lambda: {"width": 1024, "height": 768})
+	viewport_size: ViewportSize = field(default_factory=lambda: {"width": 1200, "height": 900})
 	cookies: Optional[List[Dict[str, Any]]] = None
 	cv_model_endpoint: Optional[str] = None
-
+	sheets_model_endpoint: Optional[str] = None
 
 class Browser:
 	"""
 	Unified Browser responsible for interacting with the browser via Playwright.
 	"""
 
-	def __init__(self, config: BrowserConfig = BrowserConfig()):
+	def __init__(self, config: BrowserConfig = BrowserConfig(), close_context: bool = True):
 		logger.debug('Initializing browser')
 		self.config = config
-		
+		self.close_context = close_context
 		# Playwright-related attributes
 		self.playwright: Optional[Playwright] = None
 		self.playwright_browser: Optional[PlaywrightBrowser] = None
@@ -97,9 +100,9 @@ class Browser:
 		# Initialize state
 		self._init_state()
 		
-		# Set up CV detection if endpoint is provided
+		# Set up CV detection if endpoints are provided
 		if self.config.cv_model_endpoint:
-			self.setup_cv_detector(self.config.cv_model_endpoint)
+			self.setup_cv_detector(self.config.cv_model_endpoint, self.config.sheets_model_endpoint)
 
 	async def __aenter__(self):
 		"""Async context manager entry"""
@@ -108,7 +111,8 @@ class Browser:
 
 	async def __aexit__(self, exc_type, exc_val, exc_tb):
 		"""Async context manager exit"""
-		await self.close()
+		if self.close_context:
+			await self.close()
 
 	def _init_state(self, url: str = '') -> None:
 		"""Initialize browser state"""
@@ -144,6 +148,7 @@ class Browser:
 						'--disable-web-security',
 						'--disable-site-isolation-trials',
 						'--disable-features=IsolateOrigins,site-per-process',
+						f'--window-size={self.config.viewport_size["width"]},{self.config.viewport_size["height"]}',
 					]
 				)
 		
@@ -162,7 +167,7 @@ class Browser:
 			)
 			
 			# Apply anti-detection scripts
-			await self._apply_anti_detection_scripts()
+			# await self._apply_anti_detection_scripts()
 			
 			# Set cookies if provided
 			if self.config.cookies:
@@ -187,22 +192,24 @@ class Browser:
 		self._cdp_session = await self.context.new_cdp_session(page)
 		self.current_page = page
 
-	def setup_cv_detector(self, endpoint_name: Optional[str] = None) -> None:
+	def setup_cv_detector(self, cv_endpoint_name: Optional[str] = None, sheets_endpoint_name: Optional[str] = None) -> None:
 		"""
 		Set up the CV detector with the browser
 		
 		Args:
-			endpoint_name: Optional SageMaker endpoint name. If None, uses default.
+			cv_endpoint_name: Optional SageMaker endpoint name for CV model. If None, uses default.
+			sheets_endpoint_name: Optional SageMaker endpoint name for sheets model. If None, uses default.
 		"""
-		if endpoint_name is None and self.config.cv_model_endpoint is None:
-			logger.warning("No CV model endpoint provided, skipping CV detector setup")
+		if cv_endpoint_name is None and self.config.cv_model_endpoint is None:
+			logger.debug("No CV model endpoint provided, skipping CV detector setup")
 			return
 			
 		# Use provided endpoint or fall back to config
-		endpoint = endpoint_name or self.config.cv_model_endpoint
+		cv_endpoint = cv_endpoint_name or self.config.cv_model_endpoint
+		sheets_endpoint = sheets_endpoint_name or self.config.sheets_model_endpoint
 		
-		logger.info(f"Setting up CV detector with endpoint: {endpoint}")
-		self.detector = Detector(endpoint_name=endpoint)
+		logger.info(f"Setting up CV detector with endpoints: {cv_endpoint} and {sheets_endpoint}")
+		self.detector = Detector(cv_endpoint_name=cv_endpoint, sheets_endpoint_name=sheets_endpoint)
 		
 		return self.detector
 
@@ -283,21 +290,6 @@ class Browser:
 			self._state = None
 			self.playwright_browser = None
 			self.playwright = None
-
-	# def __del__(self):
-	# 	"""Cleanup when object is destroyed"""
-	# 	if any([self.context, self.playwright_browser, self.playwright]):
-	# 		logger.debug('Browser was not properly closed before destruction')
-	# 		try:
-	# 			loop = asyncio.get_running_loop()
-	# 			if loop.is_running():
-	# 				loop.create_task(self.close())
-	# 			else:
-	# 				asyncio.run(self.close())
-	# 		except Exception as e:
-	# 			logger.warning(f'Failed to force close browser: {e}')
-
-	# Navigation methods
 	
 	async def navigate_to(self, url: str):
 		"""Navigate to a URL"""
@@ -319,7 +311,7 @@ class Browser:
 		except Exception as e:
 			logger.debug(f'During go_forward: {e}')
 
-	# Tab management methods
+
 	
 	async def get_tabs_info(self) -> list[TabInfo]:
 		"""Get information about all tabs"""
@@ -398,12 +390,15 @@ class Browser:
 		async def get_stable_state():
 			if self.current_page is None:
 				await self._init_browser()
+			url = self.current_page.url
+
+			detect_sheets = 'docs.google.com/spreadsheets/d' in url
 
 			screenshot_b64 = await self.fast_screenshot()
 			
 			# Use CV detection if available, otherwise use standard browser detection
 			if self.detector is not None:
-				interactive_elements_data = await self.get_interactive_elements_with_cv(screenshot_b64)
+				interactive_elements_data = await self.get_interactive_elements_with_cv(screenshot_b64, detect_sheets)
 			else:
 				interactive_elements_data = await self.get_interactive_elements_data()
 			
@@ -418,7 +413,7 @@ class Browser:
 			tabs = await self.get_tabs_info()
 
 			return BrowserState(
-				url=self.current_page.url,
+				url=url,
 				tabs=tabs,
 				screenshot_with_highlights=screenshot_with_highlights,
 				screenshot=screenshot_b64,
@@ -446,13 +441,13 @@ class Browser:
 		return interactive_elements_data
 	
 	@observe(name='browser.get_interactive_elements_with_cv')
-	async def get_interactive_elements_with_cv(self, screenshot_b64: Optional[str] = None) -> InteractiveElementsData:
+	async def get_interactive_elements_with_cv(self, screenshot_b64: Optional[str] = None, detect_sheets: bool = False) -> InteractiveElementsData:
 		"""
 		Get interactive elements using combined browser and CV detection.
 		
 		Args:
 			screenshot_b64: Optional base64 encoded screenshot. If None, a new screenshot will be taken.
-			
+			detect_sheets: Whether to detect sheets elements
 		Returns:
 			Combined detection results
 		"""
@@ -467,7 +462,7 @@ class Browser:
 		# Get browser-based detections
 		browser_elements_data, cv_elements = await asyncio.gather(
 			self.get_interactive_elements_data(),
-			self.detector.detect_from_image(screenshot_b64)
+			self.detector.detect_from_image(screenshot_b64, detect_sheets)
 		)
 		
 		# Combine and filter detections

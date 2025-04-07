@@ -86,6 +86,10 @@ Today's date and time is: {datetime.now().strftime('%B %d, %Y, %I:%M%p')} - keep
 		if state.interactive_elements:
 			highlighted_elements = ''
 			for element in state.interactive_elements.values():
+				
+				# exclude sheets elements
+				if element.browser_agent_id.startswith("row_") or element.browser_agent_id.startswith("column_"):
+					continue
 
 				start_tag = f"[{element.index}]<{element.tag_name}"
 

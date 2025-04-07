@@ -63,7 +63,7 @@ async def main():
     
     # Run the agent with a task
     output = await agent.run(
-        "Navigate to news.ycombinator.com, find a post about AI, and summarize it"
+        prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"
     )
     
     # Print the result
@@ -93,21 +93,18 @@ from lmnr_index import Agent, AnthropicProvider, Browser, BrowserConfig
 async def main():
     # Configure browser to connect to an existing Chrome DevTools Protocol endpoint
     browser_config = BrowserConfig(
-        cdp_url="ws://localhost:9222/devtools/browser/[session-id]"
+        cdp_url="<cdp_url>"
     )
     
-    # Create browser with the config
-    browser = Browser(config=browser_config)
-    
     # Initialize the LLM provider
-    llm = AnthropicProvider(model="claude-3-7-sonnet-20250219")
+    llm = AnthropicProvider(model="claude-3-7-sonnet-20250219", enable_thinking=True, thinking_token_budget=2048)
     
     # Create an agent with the LLM and browser
-    agent = Agent(llm=llm, browser=browser)
+    agent = Agent(llm=llm, browser_config=browser_config)
     
     # Run the agent with a task
     output = await agent.run(
-        "Navigate to news.ycombinator.com and find the top story"
+        prompt="Navigate to news.ycombinator.com and find the top story"
     )
     
     # Print the result
@@ -125,17 +122,14 @@ from lmnr_index import Agent, AnthropicProvider, Browser, BrowserConfig
 async def main():
     # Configure browser with custom viewport size
     browser_config = BrowserConfig(
-        viewport_size={"width": 1920, "height": 1080}  # Full HD resolution
+        viewport_size={"width": 1200, "height": 900}
     )
-    
-    # Create browser with the config
-    browser = Browser(config=browser_config)
     
     # Initialize the LLM provider
     llm = AnthropicProvider(model="claude-3-7-sonnet-20250219")
     
     # Create an agent with the LLM and browser
-    agent = Agent(llm=llm, browser=browser)
+    agent = Agent(llm=llm, browser_config=browser_config)
     
     # Run the agent with a task
     output = await agent.run(
