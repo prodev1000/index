@@ -40,9 +40,8 @@ class AgentOutput(BaseModel):
 	agent_state: AgentState
 	result: ActionResult
 	step_count: int = 0
-	cookies: Optional[list[dict[str, Any]]] = None
+	storage_state: Optional[str] = None
 	trace_id: str | None = None
-
 
 class AgentStreamChunk(BaseModel):
 	"""Base class for chunks in the agent stream"""

@@ -216,7 +216,7 @@ class Agent:
 			except Exception as e:
 				logger.info(f'❌ Error in run: {e}')
 			finally:
-				cookies = await self.browser.get_cookies()
+				storage_state = await self.browser.get_storage_state()
 
 				if close_context:
 					# Update to close the browser directly
@@ -225,7 +225,7 @@ class Agent:
 				return AgentOutput(
 					agent_state=self.get_state(),
 					result=result,
-					cookies=cookies,
+					storage_state=storage_state,
 					step_count=step,
 					trace_id=trace_id,
 				)
@@ -348,7 +348,7 @@ class Agent:
 		finally:
 			# Clean up resources
 			try:
-				cookies = await self.browser.get_cookies()
+				storage_state = await self.browser.get_storage_state()
 
 				if close_context:
 					# Update to close the browser directly
@@ -358,7 +358,7 @@ class Agent:
 				final_output = AgentOutput(
 					agent_state=self.get_state(),
 					result=result,
-					cookies=cookies,
+					storage_state=storage_state,
 					step_count=step,
 					trace_id=trace_id,
 				)

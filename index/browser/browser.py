@@ -518,3 +518,11 @@ class Browser:
 			cookies = await self.context.cookies()
 			return cookies
 		return []
+	
+	async def get_storage_state(self) -> dict[str, Any]:
+		"""Get local storage from the browser"""
+
+		if self.context:
+			storage_state = await self.context.storage_state()
+			return storage_state
+		return {}
