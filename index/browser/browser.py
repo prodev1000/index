@@ -69,12 +69,16 @@ class BrowserConfig:
 
 		sheets_model_endpoint: Optional[str] = None
 			SageMaker endpoint for sheets model, set to None to disable sheets detection
+
+		use_existing_context: bool = False
+			Whether to use an existing context or create a new one
 	"""
 	cdp_url: Optional[str] = None
 	viewport_size: ViewportSize = field(default_factory=lambda: {"width": 1200, "height": 900})
 	storage_state: Optional[StorageState] = None
 	cv_model_endpoint: Optional[str] = None
 	sheets_model_endpoint: Optional[str] = None
+	use_existing_context: bool = False
 
 class Browser:
 	"""
@@ -155,7 +159,7 @@ class Browser:
 		# Create context if needed
 		if self.context is None:
 
-			if len(self.playwright_browser.contexts) > 0:
+			if len(self.playwright_browser.contexts) > 0 and self.config.use_existing_context:
 				self.context = self.playwright_browser.contexts[0]
 			else:
 				self.context = await self.playwright_browser.new_context(
@@ -164,15 +168,12 @@ class Browser:
 				java_script_enabled=True,
 				bypass_csp=True,
 				ignore_https_errors=True,
+				storage_state=self.config.storage_state,
 			)
 			
 			# Apply anti-detection scripts
 			await self._apply_anti_detection_scripts()
 			
-			# Set cookies if storage state is provided
-			if self.config.storage_state:
-				await self.context.add_cookies(self.config.storage_state['cookies'])
-		
 		self.context.on('page', self._on_page_change)	
 		
 		# Create page if needed
@@ -182,7 +183,6 @@ class Browser:
 			else:
 				self.current_page = await self.context.new_page()
 		
-
 		return self
 	
 	async def _on_page_change(self, page: Page):
@@ -191,15 +191,6 @@ class Browser:
 
 		self._cdp_session = await self.context.new_cdp_session(page)
 		self.current_page = page
-		
-		for origin, storage in self.config.storage_state.get('origins', []):
-			logger.info(f'Setting up storage for {origin}, url: {page.url}')
-			if page.url.startswith(origin):
-				if 'localStorage' in storage:
-					for key, value in storage['localStorage']:
-						await page.evaluate(f"""
-							localStorage.setItem('{key}', '{value}')
-						""")
 
 	def setup_cv_detector(self, cv_endpoint_name: Optional[str] = None, sheets_endpoint_name: Optional[str] = None) -> None:
 		"""
