@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
@@ -77,4 +77,3 @@ class BrowserState:
 	screenshot_with_highlights: Optional[str] = None
 	screenshot: Optional[str] = None
 	interactive_elements: dict[int, InteractiveElement] = field(default_factory=dict)
-	cookies: list[dict[str, Any]] = field(default_factory=list)

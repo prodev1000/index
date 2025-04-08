@@ -6,7 +6,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from importlib import resources
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Optional, TypedDict
 
 from lmnr import observe
 from playwright.async_api import (
@@ -18,6 +18,7 @@ from playwright.async_api import (
 from playwright.async_api import (
 	Page,
 	Playwright,
+	StorageState,
 	async_playwright,
 )
 from tenacity import (
@@ -60,8 +61,8 @@ class BrowserConfig:
 		viewport_size: ViewportSize = {"width": 1024, "height": 768}
 			Default browser window size
 			
-		cookies: Optional[List[Dict[str, Any]]] = None
-			List of cookies to set
+		storage_state: Optional[StorageState] = None
+			Storage state to set
 			
 		cv_model_endpoint: Optional[str] = None
 			SageMaker endpoint for CV model, set to None to disable CV detection
@@ -71,7 +72,7 @@ class BrowserConfig:
 	"""
 	cdp_url: Optional[str] = None
 	viewport_size: ViewportSize = field(default_factory=lambda: {"width": 1200, "height": 900})
-	cookies: Optional[List[Dict[str, Any]]] = None
+	storage_state: Optional[StorageState] = None
 	cv_model_endpoint: Optional[str] = None
 	sheets_model_endpoint: Optional[str] = None
 
@@ -121,7 +122,6 @@ class Browser:
 			screenshot_with_highlights=None,
 			tabs=[],
 			interactive_elements={},
-			cookies=self.config.cookies or [],
 		)
 
 	async def _init_browser(self):
@@ -159,7 +159,7 @@ class Browser:
 				self.context = self.playwright_browser.contexts[0]
 			else:
 				self.context = await self.playwright_browser.new_context(
-					viewport=self.config.viewport_size,
+				viewport=self.config.viewport_size,
 				user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.102 Safari/537.36',
 				java_script_enabled=True,
 				bypass_csp=True,
@@ -167,11 +167,11 @@ class Browser:
 			)
 			
 			# Apply anti-detection scripts
-			# await self._apply_anti_detection_scripts()
+			await self._apply_anti_detection_scripts()
 			
-			# Set cookies if provided
-			if self.config.cookies:
-				await self.context.add_cookies(self.config.cookies)
+			# Set cookies if storage state is provided
+			if self.config.storage_state:
+				await self.context.add_cookies(self.config.storage_state['cookies'])
 		
 		self.context.on('page', self._on_page_change)	
 		
@@ -191,6 +191,15 @@ class Browser:
 
 		self._cdp_session = await self.context.new_cdp_session(page)
 		self.current_page = page
+		
+		for origin, storage in self.config.storage_state.get('origins', []):
+			logger.info(f'Setting up storage for {origin}, url: {page.url}')
+			if page.url.startswith(origin):
+				if 'localStorage' in storage:
+					for key, value in storage['localStorage']:
+						await page.evaluate(f"""
+							localStorage.setItem('{key}', '{value}')
+						""")
 
 	def setup_cv_detector(self, cv_endpoint_name: Optional[str] = None, sheets_endpoint_name: Optional[str] = None) -> None:
 		"""
@@ -256,8 +265,6 @@ class Browser:
 		logger.debug('Closing browser')
 		
 		try:
-			# Save cookies if needed
-			# (cookies saving functionality removed as it wasn't in the requested features)
 			
 			# Close CDP session if exists
 			self._cdp_session = None
