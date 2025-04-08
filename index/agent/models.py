@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Literal, Optional
 
+from playwright.async_api import StorageState
 from pydantic import BaseModel
 
 from index.llm.llm import Message, ThinkingBlock
@@ -40,7 +41,7 @@ class AgentOutput(BaseModel):
 	agent_state: AgentState
 	result: ActionResult
 	step_count: int = 0
-	storage_state: Optional[str] = None
+	storage_state: Optional[StorageState] = None
 	trace_id: str | None = None
 
 class AgentStreamChunk(BaseModel):
