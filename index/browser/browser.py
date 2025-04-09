@@ -70,15 +70,12 @@ class BrowserConfig:
 		sheets_model_endpoint: Optional[str] = None
 			SageMaker endpoint for sheets model, set to None to disable sheets detection
 
-		use_existing_context: bool = False
-			Whether to use an existing context or create a new one
 	"""
 	cdp_url: Optional[str] = None
 	viewport_size: ViewportSize = field(default_factory=lambda: {"width": 1200, "height": 900})
 	storage_state: Optional[StorageState] = None
 	cv_model_endpoint: Optional[str] = None
 	sheets_model_endpoint: Optional[str] = None
-	use_existing_context: bool = False
 
 class Browser:
 	"""
@@ -159,7 +156,7 @@ class Browser:
 		# Create context if needed
 		if self.context is None:
 
-			if len(self.playwright_browser.contexts) > 0 and self.config.use_existing_context:
+			if len(self.playwright_browser.contexts) > 0:
 				self.context = self.playwright_browser.contexts[0]
 			else:
 				self.context = await self.playwright_browser.new_context(
@@ -168,13 +165,15 @@ class Browser:
 				java_script_enabled=True,
 				bypass_csp=True,
 				ignore_https_errors=True,
-				storage_state=self.config.storage_state,
 			)
 			
 			# Apply anti-detection scripts
 			await self._apply_anti_detection_scripts()
 			
 		self.context.on('page', self._on_page_change)	
+
+		if self.config.storage_state and 'cookies' in self.config.storage_state:
+			await self.context.add_cookies(self.config.storage_state['cookies'])
 		
 		# Create page if needed
 		if self.current_page is None:
@@ -521,6 +520,9 @@ class Browser:
 		"""Get local storage from the browser"""
 
 		if self.context:
-			storage_state = await self.context.storage_state()
-			return storage_state
+			cookies = await self.context.cookies()
+
+			return {
+				'cookies': cookies,
+			}
 		return {}
