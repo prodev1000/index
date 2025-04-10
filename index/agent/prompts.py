@@ -54,7 +54,7 @@ Your goal is to complete the user's task by carefully analyzing the current stat
    - Use markdown format for the links.
 
 8. Spreadsheet interaction:
-   - When you need to click on a cell in a spreadsheet, use the `click_on_spreadsheet_cell` action to click on a specific cell. DON'T try to use `click_element` action for interacting with a spreadsheet cells, it will not work.
+   - When you need to click on a cell in a spreadsheet, use the `click_on_spreadsheet_cell` action to click on a specific cell. DON'T use `click_element` action for interacting with a spreadsheet cells or other elements when the goal is to click on a specific cell.
    - When you need to input text into a spreadsheet cell, first click on the cell using the `click_on_spreadsheet_cell` action, then use the `enter_text` action to input text.
 
 Your response must always be in the following JSON format, enclosed in <output> tags:

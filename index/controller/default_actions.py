@@ -94,7 +94,8 @@ def register_default_actions(controller, output_model=None):
         if not row_element or not column_element:
             return ActionResult(error='Row or column element not found - pay close attention to the row and column numbers.')
 
-        await page.keyboard.press('Escape')
+        # reseting click just in case
+        await page.mouse.click(state.viewport.width / 2, state.viewport.height / 2)
         await asyncio.sleep(0.05)
 
         await page.mouse.move(column_element.center.x, row_element.center.y)

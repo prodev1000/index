@@ -168,7 +168,6 @@ class Detector:
         """
         Call the sheets endpoint and return the detections
         """
-        logger.info("Calling sheets endpoint with image_b64")
         
         try:
             # Convert to bytes for SageMaker
@@ -180,9 +179,11 @@ class Detector:
                         "image": image_b64,
                     })
                 )
-            
-            # Parse response
-            response_body = await response["Body"].read()
+
+                # Parse response
+                async with response["Body"] as stream:
+                    response_body = await stream.read()
+
             detection_result = json.loads(response_body.decode("utf-8"))
             logger.info(f"Received detection result from SageMaker with {len(detection_result.get('detections', []))} detections")
             
