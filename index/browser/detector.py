@@ -93,14 +93,16 @@ class Detector:
                     ContentType="application/json",
                     Body=json.dumps({
                         "image": image_b64,
-                        "conf": 0.1
+                        "conf": 0.5
                     })
                 )
-            
-            # Parse response
-            response_body = await response["Body"].read()
+
+                # Parse response
+                async with response["Body"] as stream:
+                    response_body = await stream.read()
+
             detection_result = json.loads(response_body.decode("utf-8"))
-            logger.info(f"Received detection result from SageMaker with {len(detection_result.get('detections', []))} detections")
+            logger.info(f"Received detection results with {len(detection_result.get('detections', []))} detections")
             
             # Parse detections into InteractiveElement objects
             elements = []
@@ -158,7 +160,7 @@ class Detector:
             logger.info(f"Created {len(elements)} interactive elements from CV detections")
             return elements 
         except Exception as e:
-            logger.error(f"Error detecting from image: {e}")
+            logger.error(f"Error detecting from image in cv endpoint: {e}")
             return []
         
     
@@ -237,5 +239,5 @@ class Detector:
             logger.info(f"Created {len(elements)} interactive elements from sheets detections")
             return elements 
         except Exception as e:
-            logger.error(f"Error detecting from image: {e}")
+            logger.error(f"Error detecting from image in sheets endpoint: {e}")
             return []

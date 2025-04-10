@@ -108,12 +108,11 @@ def register_default_actions(controller, output_model=None):
     @controller.action()
     async def click_element(index: int, wait_after_click: bool, browser: Browser):
         """
-        Click on the element with index. Use it primarily to perform actions. 
-        If you need to input text into an element, prefer `click_element_and_enter_text` instead.
+        Click on the element with index. 
 
         Args:
             index: Index of the element to click on.
-            wait_after_click: If True, wait for 1 second after clicking the element. Use this when you think that clicking will trigger loading state, for instance navigation to new page, search, loading of a content, etc.
+            wait_after_click: If True, wait for 1 second after clicking the element. Set it to True when you think that clicking will trigger loading state, for instance navigation to new page, search, loading of a content, etc.
         """
         # clean index if it contains any non-numeric characters
         cleaned_index_str = re.sub(r'\D', '', str(index))
