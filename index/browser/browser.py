@@ -206,8 +206,7 @@ class Browser:
 		# Use provided endpoint or fall back to config
 		cv_endpoint = cv_endpoint_name or self.config.cv_model_endpoint
 		sheets_endpoint = sheets_endpoint_name or self.config.sheets_model_endpoint
-		
-		logger.info(f"Setting up CV detector with endpoints: {cv_endpoint} and {sheets_endpoint}")
+
 		self.detector = Detector(cv_endpoint_name=cv_endpoint, sheets_endpoint_name=sheets_endpoint)
 		
 		return self.detector

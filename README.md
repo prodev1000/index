@@ -1,17 +1,21 @@
 # Index
 
-Index is a state-of-the-art browser agent that uses VLMs (vision-language models) to autonomously execute complex tasks on the web. Available as a Python package and as a hosted API.
+Index is a state-of-the-art open-source browser agent that autonomously executes complex tasks on the web.
+
+- [x] It is powered by Claude 3.7 Sonnet with extented thinking. More models will be supported in the future.
+- [x] Index is also available as a [hosted API.](https://docs.lmnr.ai/laminar-index/introduction)
+- [x] Supports advanced [browser agent observability](https://docs.lmnr.ai/laminar-index/observability) powered by [Laminar](https://lmnr.ai).
 
 ## Index API
 
-Index API is available on [Laminar](https://lmnr.ai). Index API manages remote browser sessions and agent infrastructure. Index API is the best way to run AI browser automation in production. To get started, [sign up](https://lmnr.ai/sign-in) and create project API key.
+Index API is available as [hosted api](https://docs.lmnr.ai/laminar-index/introduction) on the [Laminar](https://lmnr.ai) platform. Index API manages remote browser sessions and agent infrastructure. Index API is the best way to run AI browser automation in production. To get started, [sign up](https://lmnr.ai/sign-in) and create project API key.
 
 ### Install Laminar
 ```bash
 pip install lmnr
 ```
 
-### Use Index API
+### Use Index via API
 ```python
 from lmnr import Laminar, AsyncLaminarClient
 # you can also set LMNR_PROJECT_API_KEY environment variable
@@ -35,6 +39,8 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
+When you call Index via API, you automatically get full browser agent observability on Laminar platform. Learn more about [Index browser observability](https://docs.lmnr.ai/laminar-index/introduction#tracing-with-laminar).
 
 ## Local Quick Start
 
@@ -84,6 +90,22 @@ async for chunk in agent.run_stream(
     prompt="Navigate to news.ycombinator.com, find a post about AI, and summarize it"):
     print(chunk)
 ``` 
+
+### Enable browser agent observability
+
+To trace Index agent's actions and record browser session you simply need to initialize Laminar tracing before running the agent.
+
+```python
+from lmnr import Laminar
+
+Laminar.initialize(project_api_key="your_api_key")
+```
+
+Then you will get full observability on the agent's actions synced with the browser session in the Laminar platform.
+
+<picture>
+    <img src="./static/traces.png" alt="Index observability" width="800"/>
+</picture>
 
 ### Run with remote CDP url
 ```python
@@ -145,4 +167,4 @@ if __name__ == "__main__":
 
 ---
 
-Made with ❤️ by the Laminar team
+Made with ❤️ by the [Laminar team](https://lmnr.ai)

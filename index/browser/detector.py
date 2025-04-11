@@ -46,8 +46,6 @@ class Detector:
         self.sheets_endpoint_name = sheets_endpoint_name
         self.region = region
         self.session = Session(region_name=self.region)
-
-        logger.info(f"Detector initialized with SageMaker endpoints: {self.cv_endpoint_name} and {self.sheets_endpoint_name} in region {self.region}")
     
     @observe(name="detector.detect_from_image", ignore_input=True)
     @retry(
@@ -168,6 +166,8 @@ class Detector:
         """
         Call the sheets endpoint and return the detections
         """
+
+        logger.info("Calling sheets endpoint with image_b64")
         
         try:
             # Convert to bytes for SageMaker

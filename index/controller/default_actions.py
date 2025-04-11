@@ -113,7 +113,7 @@ def register_default_actions(controller, output_model=None):
 
         Args:
             index: Index of the element to click on.
-            wait_after_click: If True, wait for 1 second after clicking the element. Set it to True when you think that clicking will trigger loading state, for instance navigation to new page, search, loading of a content, etc.
+            wait_after_click: If True, wait for 2 second after clicking the element. Only set it to True when you think that clicking will trigger loading state, for instance navigation to new page, search, loading of a content, etc.
         """
         # clean index if it contains any non-numeric characters
         cleaned_index_str = re.sub(r'\D', '', str(index))
@@ -148,7 +148,7 @@ def register_default_actions(controller, output_model=None):
                 await browser.switch_to_tab(-1)
             
             if wait_after_click:
-                await asyncio.sleep(1)
+                await asyncio.sleep(2)
 
             return ActionResult(content=msg)
         except Exception as e:
