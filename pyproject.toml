@@ -2,15 +2,29 @@
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["index"]
+
 [project]
-name = "lmnr-flow"
-version = "0.1.5"
-description = "Lightweight task engine for building AI agents"
+name = "lmnr-index"
+version = "0.1.0"
+description = "Index - SOTA browser AI agent for autonomous task execution on the web"
 readme = "README.md"
 requires-python = ">=3.10"
 
 dependencies = [
-    "lmnr>=0.4.49"
+    "anthropic[bedrock]>=0.49.0",
+    "backoff>=2.2.1",
+    "lmnr[anthropic]>=0.5.0",
+    "openai>=1.65.2",
+    "playwright>=1.50.0",
+    "tenacity>=9.0.0",
+    "pillow>=11.1.0",
+    "aiobotocore>=2.21.1",
+    "aioboto3>=14.1.0",
 ]
 
 [tool.uv]
@@ -18,9 +32,11 @@ dev-dependencies = [
     "pytest>=8.3.3"
 ]
 
-[project.urls]
-"Homepage" = "https://github.com/lmnr-ai/flow"
-"Bug Tracker" = "https://github.com/lmnr-ai/flow/issues"
-
 [project.license]
 file = "LICENSE"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v -ra -q"
