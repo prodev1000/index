@@ -6,6 +6,11 @@ Index is a state-of-the-art open-source browser agent that autonomously executes
 - [x] Index is also available as a [hosted API.](https://docs.lmnr.ai/laminar-index/introduction)
 - [x] Supports advanced [browser agent observability](https://docs.lmnr.ai/laminar-index/observability) powered by [Laminar](https://lmnr.ai).
 
+prompt: go to ycombinator.com. summarize first 3 companies in the W25 batch and make new spreadsheet in google sheets.
+
+https://github.com/user-attachments/assets/2b46ee20-81b6-4188-92fb-4d97fe0b3d6a
+
+
 ## Index API
 
 Index API is available as [hosted api](https://docs.lmnr.ai/laminar-index/introduction) on the [Laminar](https://lmnr.ai) platform. Index API manages remote browser sessions and agent infrastructure. Index API is the best way to run AI browser automation in production. To get started, [sign up](https://lmnr.ai/sign-in) and create project API key.
