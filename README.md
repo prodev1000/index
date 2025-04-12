@@ -60,7 +60,7 @@ playwright install chromium
 ### Run the agent
 ```python
 import asyncio
-from lmnr_index import Agent, AnthropicProvider
+from index import Agent, AnthropicProvider
 
 async def main():
     # Initialize the LLM provider
@@ -86,7 +86,7 @@ if __name__ == "__main__":
 
 ### Stream the agent's output
 ```python
-from lmnr_index import Agent, AnthropicProvider
+from index import Agent, AnthropicProvider
 
 agent = Agent(llm=AnthropicProvider(model="claude-3-7-sonnet-20250219"))    
 
@@ -115,7 +115,7 @@ Then you will get full observability on the agent's actions synced with the brow
 ### Run with remote CDP url
 ```python
 import asyncio
-from lmnr_index import Agent, AnthropicProvider, Browser, BrowserConfig
+from index import Agent, AnthropicProvider, BrowserConfig
 
 async def main():
     # Configure browser to connect to an existing Chrome DevTools Protocol endpoint
@@ -144,7 +144,7 @@ if __name__ == "__main__":
 ### Customize browser window size
 ```python
 import asyncio
-from lmnr_index import Agent, AnthropicProvider, Browser, BrowserConfig
+from index import Agent, AnthropicProvider, BrowserConfig
 
 async def main():
     # Configure browser with custom viewport size
