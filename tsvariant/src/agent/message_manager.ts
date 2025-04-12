@@ -1,4 +1,4 @@
-import pino from "pino";
+import pino from "pino"; // Use default import
 import { get } from "lodash";
 import dayjs from "dayjs";
 import { ActionResult, AgentLLMOutput } from "./models.js";
@@ -6,9 +6,14 @@ import { systemMessage } from "./prompts.js";
 import { loadDemoImageAsB64 } from "./utils.js";
 import { BrowserState } from "../browser/models.js";
 import { scaleB64Image } from "../browser/utils.js";
-import { ImageContent, Message, TextContent } from "../llm/llm.js";
+import {
+  ImageContent,
+  Message,
+  TextContent,
+  ThinkingBlock,
+} from "../llm/llm.js";
 
-const logger = pino({ name: "message_manager" });
+const logger = pino.default({}); // Try pino.default({}) for initialization
 
 /**
  * Manages messages for the agent's conversation with the LLM
@@ -41,22 +46,18 @@ export class MessageManager {
     const stillLoading2 = loadDemoImageAsB64("loading2.png");
     const scrollOverElementExample = loadDemoImageAsB64("scroll.png");
 
-    const systemMsg: Message = {
-      role: "system",
-      content: [
-        {
-          type: "text",
-          text: systemMessage(this.actionDescriptions),
-          cacheControl: true,
-        },
-      ],
-    };
+    const systemMsg = new Message("system", [
+      {
+        type: "text",
+        text: systemMessage(this.actionDescriptions),
+        cacheControl: true,
+      },
+    ]);
 
     this._messages.push(systemMsg);
 
-    this._messages.push({
-      role: "user",
-      content: [
+    this._messages.push(
+      new Message("user", [
         { type: "text", text: "<complex_layout_example>" },
         {
           type: "text",
@@ -92,12 +93,12 @@ export class MessageManager {
         },
         {
           type: "text",
-          text: `Here is the task you need to complete:\n\n<task>\n${prompt}\n</task>\n\nToday's date and time is: ${dayjs().format(
+          text: `Here is the task you need to complete:\\n\\n<task>\\n${prompt}\\n</task>\\n\\nToday's date and time is: ${dayjs().format(
             "MMMM DD, YYYY, hh:mmA"
           )} - keep this date and time in mind when planning your actions.`,
         },
-      ],
-    });
+      ])
+    );
   }
 
   /**
@@ -193,37 +194,32 @@ export class MessageManager {
       ? `<user_follow_up_message>\n${userFollowUpMessage}\n</user_follow_up_message>\n\n`
       : "";
 
-    const tabsInfo = state.tabs
-      .map((tab) => `Tab ${tab.pageId}: ${tab.title} (${tab.url})`)
-      .join("\n");
-
+    // Use state.tabs directly instead of formatting it
+    // This matches the Python implementation which directly uses state.tabs
     const stateDescription = `${previousActionOutput}${userFollowUp}
 <viewport>
 Current URL: ${state.url}
 
 Open tabs:
-${tabsInfo}
+${state.tabs}
 
 Current viewport information:
 ${elementsText}
 </viewport>`;
 
-    const stateMsg: Message = {
-      role: "user",
-      content: [
-        { type: "text", text: stateDescription },
-        { type: "text", text: "<current_state_clean_screenshot>" },
-        { type: "image", imageUrl: "", imageB64: state.screenshot || "" },
-        { type: "text", text: "</current_state_clean_screenshot>" },
-        { type: "text", text: "<current_state>" },
-        {
-          type: "image",
-          imageUrl: "",
-          imageB64: state.screenshotWithHighlights || "",
-        },
-        { type: "text", text: "</current_state>" },
-      ],
-    };
+    const stateMsg = new Message("user", [
+      { type: "text", text: stateDescription },
+      { type: "text", text: "<current_state_clean_screenshot>" },
+      { type: "image", imageUrl: "", imageB64: state.screenshot || "" },
+      { type: "text", text: "</current_state_clean_screenshot>" },
+      { type: "text", text: "<current_state>" },
+      {
+        type: "image",
+        imageUrl: "",
+        imageB64: state.screenshotWithHighlights || "",
+      },
+      { type: "text", text: "</current_state>" },
+    ]);
 
     this._messages.push(stateMsg);
   }
@@ -263,9 +259,9 @@ ${elementsText}
         }\n</action_error_${step - 1}>`;
       }
 
-      const userMsg: Message = {
-        role: "user",
-        content: [
+      const userMsg = new Message(
+        "user",
+        [
           { type: "text", text: previousActionOutput, cacheControl: true },
           { type: "text", text: `<state_${step}>` },
           {
@@ -275,38 +271,35 @@ ${elementsText}
           },
           { type: "text", text: `</state_${step}>` },
         ],
-        isStateMessage: true,
-      };
+        undefined, // name
+        undefined, // toolCallId
+        true // isStateMessage
+      );
 
       this._messages.push(userMsg);
     }
 
     // Create assistant content with model output
-    const assistantContent: (TextContent | ImageContent | ThinkingBlock)[] = [];
+    const assistantContent: (TextContent | ImageContent | ThinkingBlock)[] = [
+      {
+        type: "text",
+        // Match Python's model_dump_json(include={...})
+        text: `<output_${step}>\n${JSON.stringify(
+          {
+            thought: modelOutput.thought,
+            action: modelOutput.action, // Keep the whole action object
+            summary: modelOutput.summary,
+          },
+          null,
+          2
+        ).trim()}\n</output_${step}>`,
+      },
+    ];
 
-    // Add thinking block if available
+    // Add thinking block at the beginning if available
     if (modelOutput.thinkingBlock) {
-      assistantContent.push(modelOutput.thinkingBlock);
+      assistantContent.unshift(modelOutput.thinkingBlock);
     }
-
-    // Add model output as JSON
-    assistantContent.push({
-      type: "text",
-      text: `<output_${step}>
-${JSON.stringify(
-  {
-    thought: modelOutput.thought,
-    action: {
-      name: modelOutput.action.name,
-      params: modelOutput.action.params,
-    },
-    summary: modelOutput.summary,
-  },
-  null,
-  2
-).trim()}
-</output_${step}>`,
-    });
 
     const msg = new Message("assistant", assistantContent);
 

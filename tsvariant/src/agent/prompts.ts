@@ -62,9 +62,9 @@ Your goal is to complete the user's task by carefully analyzing the current stat
    - When you need to click on a cell in a spreadsheet, use the \`click_on_spreadsheet_cell\` action to click on a specific cell. DON'T use \`click_element\` action for interacting with a spreadsheet cells or other elements when the goal is to click on a specific cell.
    - When you need to input text into a spreadsheet cell, first click on the cell using the \`click_on_spreadsheet_cell\` action, then use the \`enter_text\` action to input text.
 
-Your response must always be in the following JSON format, enclosed in <o> tags:
+Your response must always be in the following JSON format, enclosed in <output> tags:
 
-<o>
+<output>
 {
   "thought": "EITHER a very short summary of your thinking process with key points OR exact information that you need to remember for the future (in case of research tasks).",
   "action": {
@@ -76,13 +76,13 @@ Your response must always be in the following JSON format, enclosed in <o> tags:
   },
   "summary": "Extremely brief summary of what you are doing to display to the user to help them understand what you are doing"
 }
-</o>
+</output>
 
 Remember:
 - Think concisely and briefly.
 - Output only a single action per response.
 - You will be prompted again after each action.
-- Always provide an output in the specified JSON format, enclosed in <o> tags.
+- Always provide an output in the specified JSON format, enclosed in <output> tags.
 - Ensure that your chosen action is explicitly stated in your analysis and aligns with the task requirements.
 - Review past actions to avoid repeating unsuccessful approaches.
 - Be creative and persistent in trying different strategies within the boundaries of the website.
@@ -91,5 +91,5 @@ Remember:
 
 Continue this process until you are absolutely certain that you have completed the user's task fully and accurately. Be thorough, creative, and persistent in your approach.
 
-Your final output should consist only of the JSON object enclosed in <o> tags and should not duplicate or rehash any of the work you did in the thinking block.`;
+Your final output should consist only of the JSON object enclosed in <output> tags and should not duplicate or rehash any of the work you did in the thinking block.`;
 }

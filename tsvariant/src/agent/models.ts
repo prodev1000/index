@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { Message, ThinkingBlock } from "../llm/llm.js";
+import { Message, ThinkingBlock } from "../llm/llm.js"; // Import Message class and ThinkingBlock interface
 
 // Define Zod schemas for validation (equivalent to Pydantic models)
-export const AgentStateSchema = z.object({
-  messages: z.array(z.any()), // Will be properly typed once Message is defined in llm/llm.ts
-});
+
+// Forward declaration for AgentStateSchema as it's used recursively (potentially)
+let AgentStateSchema: z.ZodTypeAny; // Use ZodTypeAny for forward declaration
 
 export const ActionResultSchema = z.object({
   isDone: z.boolean().optional().default(false),
@@ -22,14 +22,14 @@ export const AgentLLMOutputSchema = z.object({
   thought: z.string(),
   action: ActionModelSchema,
   summary: z.string().optional(),
-  thinkingBlock: z.any().optional(), // Will be properly typed once ThinkingBlock is defined
+  thinkingBlock: z.custom<ThinkingBlock>().optional(), // Use z.custom for interface type
 });
 
 export const AgentOutputSchema = z.object({
-  agentState: z.any(), // AgentStateSchema,
+  agentState: z.lazy(() => AgentStateSchema), // Use lazy evaluation for AgentStateSchema
   result: ActionResultSchema.nullable(),
   stepCount: z.number().int().default(0),
-  storageState: z.any().optional(), // Placeholder for PlaywrightJS StorageState
+  storageState: z.any().optional(), // Revert to z.any() for schema validation
   traceId: z.string().nullable().default(null),
 });
 
@@ -54,7 +54,7 @@ export const TimeoutChunkContentSchema = z.object({
   actionResult: ActionResultSchema,
   summary: z.string(),
   step: z.number().int(),
-  agentState: z.any(), // AgentStateSchema,
+  agentState: z.lazy(() => AgentStateSchema), // Use lazy evaluation for AgentStateSchema
   stepParentSpanContext: z.string().optional(),
   traceId: z.string().nullable().default(null),
   screenshot: z.string().optional(),
@@ -75,8 +75,13 @@ export const FinalOutputChunkSchema = AgentStreamChunkSchema.extend({
   content: AgentOutputSchema,
 });
 
+// Assign the actual schema definition after other schemas are defined
+AgentStateSchema = z.object({
+  messages: z.array(z.custom<Message>()), // Use z.custom for class type
+});
+
 // TypeScript types derived from Zod schemas
-export type AgentStateType = z.infer<typeof AgentStateSchema>;
+export type AgentStateType = z.infer<typeof AgentStateSchema>; // Define type alias after schema assignment
 export type ActionResultType = z.infer<typeof ActionResultSchema>;
 export type ActionModelType = z.infer<typeof ActionModelSchema>;
 export type AgentLLMOutputType = z.infer<typeof AgentLLMOutputSchema>;
@@ -114,13 +119,13 @@ export function isFinalOutputChunk(
  * Represents the agent's current state
  */
 export class AgentState {
-  messages: Message[];
+  messages: Message[]; // Use imported Message type
 
   /**
    * Initialize agent state
    * @param options - Initialize with provided values or defaults
    */
-  constructor(options: { messages?: Message[] } = {}) {
+  constructor(options: { messages?: Message[] } = {}) { // Use imported Message type
     const { messages = [] } = options;
     this.messages = messages;
   }
@@ -207,7 +212,7 @@ export class AgentLLMOutput {
   thought: string;
   action: ActionModel;
   summary: string;
-  thinkingBlock?: ThinkingBlock;
+  thinkingBlock?: ThinkingBlock; // Use imported ThinkingBlock interface
 
   /**
    * Initialize LLM output
@@ -217,7 +222,7 @@ export class AgentLLMOutput {
     thought: string;
     action: ActionModel | Record<string, any>;
     summary: string;
-    thinkingBlock?: ThinkingBlock;
+    thinkingBlock?: ThinkingBlock; // Use imported ThinkingBlock interface
   }) {
     const { thought, action, summary, thinkingBlock } = options;
 
@@ -293,7 +298,7 @@ export class AgentOutput {
   agentState: AgentState;
   result: ActionResult | null;
   stepCount: number;
-  storageState?: any;
+  storageState?: any; // Use 'any' type annotation
   traceId: string | null;
 
   /**
@@ -304,7 +309,7 @@ export class AgentOutput {
     agentState: AgentState;
     result: ActionResult | null;
     stepCount?: number;
-    storageState?: any;
+    storageState?: any; // Use 'any' type annotation
     traceId?: string | null;
   }) {
     const {

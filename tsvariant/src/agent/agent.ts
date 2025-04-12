@@ -1,4 +1,4 @@
-import pino from "pino";
+import pino from "pino"; // Use default import
 import { v4 as uuidv4 } from "uuid";
 
 import { MessageManager } from "./message_manager.js";
@@ -20,7 +20,27 @@ import { Browser, BrowserConfig } from "../browser/browser.js";
 import { Controller } from "../controller/controller.js";
 import { BaseLLMProvider, Message } from "../llm/llm.js";
 
-const logger = pino({ name: "agent" });
+const logger = pino.default({}); // Try pino.default({}) for initialization
+
+// Helper function to safely parse JSON, attempting fixes
+function safeJsonParse(jsonStr: string): any {
+  try {
+    // First attempt: parse directly
+    return JSON.parse(jsonStr);
+  } catch (e1) {
+    try {
+      // Second attempt: fix common escape issues and retry
+      const fixedJsonStr = jsonStr
+        .replace(/\\\\n/g, "\\n")
+        .replace(/\\\\r/g, "\\r")
+        .replace(/\\\\t/g, "\\t");
+      return JSON.parse(fixedJsonStr);
+    } catch (e2) {
+      // If both fail, rethrow the original error or a custom one
+      throw new Error(`Failed to parse JSON after attempting fixes: ${e1}`);
+    }
+  }
+}
 
 /**
  * Agent class that coordinates interactions between LLM, browser and controller
@@ -131,33 +151,24 @@ export class Agent {
     let content = response.content.replace(/\0/g, "");
 
     // Extract content between <output> tags using regex, including variations like <output_32>
-    const pattern = /<output(?:[^>]*)>(.*?)<\/output(?:[^>]*)>/s;
+    // Match Python's regex logic more closely
+    const pattern = /<output(?:[^>]*)>(.*?)<\/output(?:[^>]*)>/s; // Corrected regex
     const match = pattern.exec(content);
 
     let jsonStr = "";
 
     if (!match) {
-      // If we couldn't find the <output> tags, assume the whole content is the JSON
-      jsonStr = content.replace(/<o>/g, "").replace(/<\/o>/g, "").trim();
+      // If we couldn't find the <output> tags, assume the whole content is the JSON,
+      // removing the tags if they exist at the start/end (like Python's fallback)
+      jsonStr = content.replace(/^<output>/, "").replace(/<\/output>$/, "").trim(); // Corrected regex
     } else {
-      // Extract the content from within the <output> tags
-      jsonStr = match[1].replace(/<o>/g, "").replace(/<\/o>/g, "").trim();
+      // Extract the content from within the matched <output> tags
+      jsonStr = match[1].trim(); // Trim whitespace from the extracted content
     }
 
     try {
-      // First try to parse it directly
-      try {
-        JSON.parse(jsonStr);
-      } catch (jsonError) {
-        // If direct parsing fails, attempt to fix common issues
-        jsonStr = jsonStr
-          .replace(/\\n/g, "\n")
-          .replace(/\\r/g, "\r")
-          .replace(/\\t/g, "\t");
-      }
-
-      // Parse the JSON into an AgentLLMOutput
-      const outputObj = JSON.parse(jsonStr);
+      // Use the helper function for parsing
+      const outputObj = safeJsonParse(jsonStr);
 
       // Validate required fields
       if (!outputObj.thought) {
@@ -209,20 +220,20 @@ export class Agent {
         const state = AgentState.fromJSON(agentState);
         this.messageManager.setMessages(state.messages);
 
-        // Update browser state
+        // Update browser state *before* adding the message
         const browserState = await this.browser.updateState();
 
         // Add current state message with optional user follow-up
         if (prompt) {
           // Add the state with user follow-up message if prompt is provided
           this.messageManager.addCurrentStateMessage(
-            browserState,
+            browserState, // Use the updated state
             null,
             prompt
           );
         } else {
           // Just update the state message without user follow-up
-          this.messageManager.addCurrentStateMessage(browserState);
+          this.messageManager.addCurrentStateMessage(browserState); // Use the updated state
         }
       } catch (error) {
         logger.error(`Failed to restore agent state: ${error}`);
@@ -237,7 +248,14 @@ export class Agent {
         await this.browser.updateState();
       } catch (error) {
         logger.error(`Failed to initialize browser state: ${error}`);
+        // Don't throw here, allow the agent to potentially recover or proceed
       }
+      // No need to call updateState here, step() will do it.
+      // try {
+      //   await this.browser.updateState();
+      // } catch (error) {
+      //   logger.error(`Failed to initialize browser state: ${error}`);
+      // }
     }
   }
 
@@ -430,7 +448,7 @@ export class Agent {
                 ? JSON.stringify(stepSpanContext)
                 : undefined,
               traceId,
-              screenshot,
+              screenshot: screenshot ?? undefined, // Use nullish coalescing for undefined
             }),
           });
           return;
@@ -442,7 +460,7 @@ export class Agent {
             actionResult: result,
             summary,
             traceId,
-            screenshot,
+            screenshot: screenshot ?? undefined, // Use nullish coalescing for undefined
           }),
         });
 

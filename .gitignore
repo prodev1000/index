@@ -150,6 +150,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+tsvariant/node_modules
+tsvariant/node_modules/
+node_modules
 
 # pytype static type analyzer
 .pytype/
