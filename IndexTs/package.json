@@ -1,0 +1,32 @@
+{
+  "name": "indexts",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node -r ts-node/register/transpile-only -r tsconfig-paths/register dist/index.js",
+    "dev": "ts-node -r tsconfig-paths/register src/index.ts",
+    "stream": "ts-node -r tsconfig-paths/register src/index.ts --stream",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "browser",
+    "agent",
+    "automation",
+    "playwright",
+    "llm"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "description": "TypeScript version of the Index browser agent",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.29.1",
+    "@typescript-eslint/parser": "^8.29.1",
+    "eslint": "^9.24.0",
+    "eslint-plugin-import": "^2.31.0"
+  }
+}

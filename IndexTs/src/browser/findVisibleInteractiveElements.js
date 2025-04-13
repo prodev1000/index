@@ -1,5 +1,4 @@
-// This function will be injected into the browser to find interactive elements
-export const findVisibleInteractiveElementsScript = `() => {
+() => {
 
     console.time('totalExecutionTime');
 
@@ -27,7 +26,7 @@ export const findVisibleInteractiveElementsScript = `() => {
 
     function generateUniqueId() {
         const rand = Math.random().toString(36);
-        return \`ba-\${rand}\`;
+        return `ba-${rand}`;
     } 
 
     // Add this helper function to check element coverage
@@ -234,7 +233,7 @@ export const findVisibleInteractiveElementsScript = `() => {
                         allElements.push(element);
                     }
                 } catch (e) {
-                    console.warn(\`Error processing \${priority} elements:\`, e);
+                    console.warn(`Error processing ${priority} elements:`, e);
                 }
             });
             
@@ -398,7 +397,7 @@ export const findVisibleInteractiveElementsScript = `() => {
         }
         
         console.timeEnd('findInteractiveElements');
-        console.log(\`Found \${viewportElements.length} interactive elements in viewport (out of \${allElements.length} total)\`);
+        console.log(`Found ${viewportElements.length} interactive elements in viewport (out of ${allElements.length} total)`);
         return viewportElements;
     }
 
@@ -515,7 +514,7 @@ export const findVisibleInteractiveElementsScript = `() => {
         
         // Filter out overlapping elements
         const filteredElements = filterOverlappingElements(potentialElements);
-        console.log(\`Filtered to \${filteredElements.length} non-overlapping elements\`);
+        console.log(`Filtered to ${filteredElements.length} non-overlapping elements`);
         
         // Sort elements by position (top-to-bottom, left-to-right)
         const sortedElements = sortElementsByPosition(filteredElements);
@@ -601,8 +600,10 @@ export const findVisibleInteractiveElementsScript = `() => {
                     y: Math.round(rect.top + rect.height/2)
                 },
                 rect: {
-                    x: Math.round(rect.left),
-                    y: Math.round(rect.top),
+                    left: Math.round(rect.left),
+                    top: Math.round(rect.top),
+                    right: Math.round(rect.right),
+                    bottom: Math.round(rect.bottom),
                     width: Math.round(rect.width),
                     height: Math.round(rect.height)
                 },
@@ -707,4 +708,4 @@ export const findVisibleInteractiveElementsScript = `() => {
     console.timeEnd('totalExecutionTime');
 
     return result;
-};`;
+};   

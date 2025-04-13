@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2020", // Or a later version
+    "module": "CommonJS", // Or "ESNext" if you prefer ES modules
+    "lib": ["ES2020", "DOM"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "experimentalDecorators": true, // If using decorators for controller actions
+    "emitDecoratorMetadata": true,  // If using decorators
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

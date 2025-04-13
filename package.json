@@ -1,6 +1,0 @@
-{
-  "devDependencies": {
-    "@playwright/test": "^1.51.1",
-    "@types/lodash": "^4.17.16"
-  }
-}

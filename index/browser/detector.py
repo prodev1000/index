@@ -1,20 +1,13 @@
 """
-Computer vision detector module that uses aioboto3 for AWS SageMaker integration.
+Simple detector module for element detection.
 """
 
-import json
 import logging
 from dataclasses import dataclass
 from typing import List
+import random
 
-from aioboto3.session import Session
 from lmnr import observe
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 from index.browser.models import InteractiveElement
 
@@ -30,89 +23,56 @@ class CVDetection:
 
 class Detector:
     """
-    AWS SageMaker-based detector for computer vision element detection,
-    using aioboto3 for async API calls.
+    Simple detector for element detection that generates mock elements.
     """
     
-    def __init__(self, cv_endpoint_name: str, sheets_endpoint_name: str, region: str = "us-east-1"):
+    def __init__(self):
         """
-        Initialize the detector with a SageMaker endpoint.
-        
-        Args:
-            endpoint_name: Name of the SageMaker endpoint to use
-            region: AWS region for the endpoint
+        Initialize the detector.
         """
-        self.cv_endpoint_name = cv_endpoint_name
-        self.sheets_endpoint_name = sheets_endpoint_name
-        self.region = region
-        self.session = Session(region_name=self.region)
+        pass
     
     @observe(name="detector.detect_from_image", ignore_input=True)
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=0.5, min=0.5, max=2),
-        retry=retry_if_exception_type((Exception)),
-        reraise=True,
-    )
     async def detect_from_image(self, image_b64: str, detect_sheets: bool = False) -> List[InteractiveElement]:
         """
-        Send a base64 encoded image to SageMaker for detection and return
-        parsed InteractiveElement objects.
+        Mock detection from image data - generates sample elements.
         
         Args:
-            image_b64: Base64 encoded image
+            image_b64: Base64 encoded image (not used in this implementation)
+            detect_sheets: Whether to detect sheet-like elements
             
         Returns:
-            List of InteractiveElement objects created from CV detections
+            List of mock InteractiveElement objects
         """
         if detect_sheets:
-            return await self.call_sheets_endpoint(image_b64)
+            return await self._generate_sheet_elements()
         else:
-            return await self.call_cv_endpoint(image_b64)
+            return await self._generate_cv_elements()
 
-    @observe(name="detector.call_cv_endpoint", ignore_input=True)
-    async def call_cv_endpoint(self, image_b64: str) -> List[InteractiveElement]:
+    async def _generate_cv_elements(self) -> List[InteractiveElement]:
         """
-        Send a base64 encoded image to SageMaker for detection and return
-        parsed InteractiveElement objects.
+        Generate mock CV elements.
         
-        Args:
-            image_b64: Base64 encoded image
-            
         Returns:
-            List of InteractiveElement objects created from CV detections
+            List of mock InteractiveElement objects
         """
-        
         try:
-            # Convert to bytes for SageMaker
-            async with self.session.client("sagemaker-runtime") as client:
-                response = await client.invoke_endpoint(
-                    EndpointName=self.cv_endpoint_name,
-                    ContentType="application/json",
-                    Body=json.dumps({
-                        "image": image_b64,
-                        "conf": 0.5
-                    })
-                )
-
-                # Parse response
-                async with response["Body"] as stream:
-                    response_body = await stream.read()
-
-            detection_result = json.loads(response_body.decode("utf-8"))
-            logger.info(f"Received detection results with {len(detection_result.get('detections', []))} detections")
+            # Generate a random number of mock elements (3-8)
+            num_elements = random.randint(3, 8)
+            logger.info(f"Generating {num_elements} mock CV elements")
             
-            # Parse detections into InteractiveElement objects
             elements = []
-            predictions = detection_result.get('detections', [])
+            image_width = 800
+            image_height = 600
             
-            for i, pred in enumerate(predictions):
-                # Extract bounding box
-                box = pred.get('box', [0, 0, 0, 0])
-                
-                x1, y1, x2, y2 = box
-                width = x2 - x1
-                height = y2 - y1
+            for i in range(num_elements):
+                # Generate random box dimensions
+                x1 = random.randint(10, image_width - 100)
+                y1 = random.randint(10, image_height - 100)
+                width = random.randint(50, 200)
+                height = random.randint(30, 100)
+                x2 = min(x1 + width, image_width)
+                y2 = min(y1 + height, image_height)
                 
                 # Create unique ID for the CV detection
                 index_id = f"cv-{i}"
@@ -155,90 +115,84 @@ class Detector:
                 
                 elements.append(element)
             
-            logger.info(f"Created {len(elements)} interactive elements from CV detections")
-            return elements 
+            logger.info(f"Created {len(elements)} mock interactive elements")
+            return elements
         except Exception as e:
-            logger.error(f"Error detecting from image in cv endpoint: {e}")
+            logger.error(f"Error generating mock CV elements: {e}")
             return []
-        
     
-    async def call_sheets_endpoint(self, image_b64: str) -> List[InteractiveElement]:
+    async def _generate_sheet_elements(self) -> List[InteractiveElement]:
         """
-        Call the sheets endpoint and return the detections
-        """
-
-        logger.info("Calling sheets endpoint with image_b64")
+        Generate mock sheet elements.
         
+        Returns:
+            List of mock InteractiveElement objects
+        """
         try:
-            # Convert to bytes for SageMaker
-            async with self.session.client("sagemaker-runtime") as client:
-                response = await client.invoke_endpoint(
-                    EndpointName=self.sheets_endpoint_name,
-                    ContentType="application/json",
-                    Body=json.dumps({
-                        "image": image_b64,
-                    })
-                )
-
-                # Parse response
-                async with response["Body"] as stream:
-                    response_body = await stream.read()
-
-            detection_result = json.loads(response_body.decode("utf-8"))
-            logger.info(f"Received detection result from SageMaker with {len(detection_result.get('detections', []))} detections")
+            # Generate grid-like elements for sheets
+            logger.info("Generating mock sheet elements")
             
-            # Parse detections into InteractiveElement objects
             elements = []
-            predictions = detection_result.get('detections', [])
+            image_width = 800
+            image_height = 600
             
-            for i, pred in enumerate(predictions):
-                # Extract bounding box
-                box = pred.get('box', [0, 0, 0, 0])
-                
-                x1, y1, x2, y2 = box
-                width = x2 - x1
-                height = y2 - y1
-                
-                # Create element
-                element = InteractiveElement(
-                    index=i,
-                    browser_agent_id=pred.get('class_name'),
-                    tag_name=pred.get('class_name'),
-                    text="",
-                    attributes={},
-                    weight=1,
-                    viewport={
-                        "x": round(x1),
-                        "y": round(y1),
-                        "width": round(width),
-                        "height": round(height)
-                    },
-                    page={
-                        "x": round(x1),
-                        "y": round(y1),
-                        "width": round(width),
-                        "height": round(height)
-                    },
-                    center={
-                        "x": round(x1 + width/2),
-                        "y": round(y1 + height/2)
-                    },
-                    input_type=None,
-                    rect={
-                        "left": round(x1),
-                        "top": round(y1),
-                        "right": round(x2),
-                        "bottom": round(y2),
-                        "width": round(width),
-                        "height": round(height)
-                    },
-                    z_index=0
-                )
-                
-                elements.append(element)
+            # Create a grid of cells (5x8)
+            rows = 5
+            cols = 8
+            cell_width = image_width / cols
+            cell_height = image_height / rows
             
-            logger.info(f"Created {len(elements)} interactive elements from sheets detections")
-            return elements 
+            index = 0
+            for row in range(rows):
+                for col in range(cols):
+                    x1 = col * cell_width
+                    y1 = row * cell_height
+                    x2 = (col + 1) * cell_width
+                    y2 = (row + 1) * cell_height
+                    width = cell_width
+                    height = cell_height
+                    
+                    # Create element
+                    element = InteractiveElement(
+                        index=index,
+                        browser_agent_id=f"cell-{row}-{col}",
+                        tag_name="cell",
+                        text="",
+                        attributes={},
+                        weight=1,
+                        viewport={
+                            "x": round(x1),
+                            "y": round(y1),
+                            "width": round(width),
+                            "height": round(height)
+                        },
+                        page={
+                            "x": round(x1),
+                            "y": round(y1),
+                            "width": round(width),
+                            "height": round(height)
+                        },
+                        center={
+                            "x": round(x1 + width/2),
+                            "y": round(y1 + height/2)
+                        },
+                        input_type=None,
+                        rect={
+                            "left": round(x1),
+                            "top": round(y1),
+                            "right": round(x2),
+                            "bottom": round(y2),
+                            "width": round(width),
+                            "height": round(height)
+                        },
+                        z_index=0
+                    )
+                    
+                    elements.append(element)
+                    index += 1
+            
+            logger.info(f"Created {len(elements)} mock sheet elements")
+            return elements
         except Exception as e:
-            logger.error(f"Error detecting from image in sheets endpoint: {e}")
+            logger.error(f"Error generating mock sheet elements: {e}")
             return []
